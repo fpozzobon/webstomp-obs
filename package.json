@@ -1,0 +1,38 @@
+{
+  "name": "webstomp-obs",
+  "version": "0.1.0",
+  "description": "Stomp over websocket using observable",
+  "main": "./dist/stompobs.js",
+  "typings": "./dist/index.d.ts",
+  "scripts": {
+    "build": "webpack && webpack -p",
+    "example": "webpack && opn http://localhost:8080/example & http-server",
+    "test": "mocha --opts mocha.opts",
+    "test:auto": "mocha --opts mocha.opts --watch"
+  },
+  "keywords": [
+    "typescript",
+    "stomp",
+    "webstomp",
+    "webstompobs",
+    "websocket",
+    "observable"
+  ],
+  "author": "F. Pozzobon",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "http-server": "^0.9.0",
+    "mocha": "^3.2.0",
+    "opn-cli": "^3.1.0",
+    "rxjs": "^5.0.0-rc.3",
+    "sinon": "^1.17.6",
+    "ts-loader": "^1.2.2",
+    "ts-node": "^1.7.0",
+    "tslint": "^3.5.0",
+    "tslint-loader": "^2.1.0",
+    "typescript": "^2.0.6",
+    "webpack": "^1.12.14",
+    "yargs": "^6.4.0"
+  }
+}
