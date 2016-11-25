@@ -9,7 +9,7 @@
     "removeComments": false,
     "inlineSourceMap": true,
     "declaration": true,
-    "outDir": "../dist"
+    "outDir": "../publish"
   },
   "filesGlob": [
     "./**/*.ts",

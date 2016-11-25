@@ -5,14 +5,18 @@ var webpack = require('webpack'),
 var libraryName = 'webstompobs',
     plugins = [],
     outputFile,
-    devtoolArg;
+    devtoolArg,
+    dist = '/dist';
 
 if (yargs.argv.p) {
   plugins.push(new webpack.optimize.UglifyJsPlugin({ minimize: true }));
   outputFile = libraryName + '.min.js';
-} else {
+} else if (yargs.argv.n) {
   outputFile = libraryName + '.js';
-  devtoolArg = 'source-map';
+  dist = 'publish'
+} else {
+    outputFile = libraryName + '.js';
+    devtoolArg = 'source-map';
 }
 
 var config = {
@@ -20,7 +24,7 @@ var config = {
     __dirname + '/src/index.ts'
   ],
   output: {
-    path: path.join(__dirname, '/dist'),
+    path: path.join(__dirname, dist),
     filename: outputFile,
     library: libraryName,
     libraryTarget: 'umd'
