@@ -1,9 +1,9 @@
 {
   "name": "webstomp-obs",
-  "version": "0.2.4",
+  "version": "0.2.6",
   "description": "Stomp over websocket using observable",
-  "main": "./dist/stompobs.js",
-  "typings": "./dist/index.d.ts",
+  "main": "./webstompobs.js",
+  "typings": "./types/index.d.ts",
   "scripts": {
     "build": "webpack && webpack -p",
     "example": "webpack && opn http://localhost:8080/example & http-server",
