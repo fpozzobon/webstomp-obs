@@ -33,7 +33,8 @@ build/Release
 node_modules
 jspm_packages
 typings
-publish
+types
+webstompobs.js
 
 # Optional npm cache directory
 .npm

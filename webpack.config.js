@@ -13,7 +13,7 @@ if (yargs.argv.p) {
   outputFile = libraryName + '.min.js';
 } else if (yargs.argv.n) {
   outputFile = libraryName + '.js';
-  dist = 'publish'
+  dist = '/'
 } else {
     outputFile = libraryName + '.js';
     devtoolArg = 'source-map';
