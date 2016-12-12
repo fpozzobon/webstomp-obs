@@ -67,12 +67,15 @@ export class ConnectedClient {
     private broadcastSubscribers: IObservables
     private broadcastReceipterObservable: Observable<Frame>
     private broadcastReceipterObserver: Observer<Frame>
+    private broadcastErrorObservable: Observable<Frame>
+    private broadcastErrorObserver: Observer<Frame>
 
     constructor(webSocketClient: WebSocketHandler) {
 
         this.webSocketClient = webSocketClient;
         this.webSocketClient.onMessageReceived = this._onMessageReceivedFn
         this.webSocketClient.onMessageReceipted = this._onMessageReceiptedFn
+        this.webSocketClient.onErrorReceived = this._onErrorReceivedFn
         // used to index subscribers
         this.counter = 0;
         // subscription callbacks indexed by subscriber's ID
@@ -87,6 +90,15 @@ export class ConnectedClient {
         // `subscribe()`.
         const onreceive: (Frame) => void = this.subscriptions[subscription] && this.subscriptions[subscription].next.bind(this.subscriptions[subscription]);
         return onreceive
+    }
+
+    // on Error Received event
+    // return true if it can handle the reception, false otherwise
+    private _onErrorReceivedFn = (): (Frame) => void => {
+        // the `_onErrorReceivedFn` callback is registered when the client calls
+        // `error()`.
+        const onerror: (Frame) => void = this.broadcastErrorObserver && this.broadcastErrorObserver.next.bind(this.broadcastErrorObserver);
+        return onerror
     }
 
     // on Message Receipt event
@@ -146,7 +158,24 @@ export class ConnectedClient {
         return this.broadcastReceipterObservable;
 
     }
-    
+
+    public error = (): Observable<Frame> => {
+
+        // create one and only one broadcast receiver
+        if (!this.broadcastErrorObservable) {
+            const connectedSubscribe: ConnectableObservable<Frame> = Observable.create((observer: Observer<Frame>) => {
+                    this.broadcastErrorObserver = observer
+                })
+                .finally(() => this.broadcastErrorObserver ? this.broadcastErrorObserver = null : null)
+                .multicast(() => new Subject())
+
+            connectedSubscribe.connect();
+            this.broadcastErrorObservable = connectedSubscribe.refCount();
+        }
+        return this.broadcastErrorObservable;
+
+    }
+
     // subscribe to a destination
     // return an Observable which you can unsubscribe
     public subscribe = (destination: string, headers: SubscribeHeaders = {}): Observable<Frame> => {
@@ -184,4 +213,3 @@ export class ConnectedClient {
     }
 
 }
-

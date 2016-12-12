@@ -142,6 +142,10 @@ var subscription = source.subscribe(
 
 Will give back an Observable to subscribe to get the receipt event.
 
+### error(): Observable<any>;
+
+Will give back an Observable to subscribe to get the error event.
+
 ### subscribe(destination: string, headers?: SubscribeHeaders): Observable<any>;
 
 Initialise an UNIQUE subscription with the websocket on a destination (usefull for the queue for example)

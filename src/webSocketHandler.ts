@@ -49,6 +49,7 @@ class WebSocketHandler {
 
     public onMessageReceived: (subscription: number) => (Frame) => void
     public onMessageReceipted: () => (Frame) => void
+    public onErrorReceived: () => (Frame) => void
 
     constructor(createWsConnection: () => IWebSocket, options: WsOptions) {
 
@@ -63,7 +64,7 @@ class WebSocketHandler {
         this.heartbeat = (heartbeat as Heartbeat) || {outgoing: 0, incoming: 0};
         this.partialData = '';
         this.createWS = createWsConnection;
-        
+
         this.isBinary = !!binary;
         // used to index subscribers
         this.counter = 0;
@@ -153,7 +154,7 @@ class WebSocketHandler {
                             break;
                         // [ERROR Frame](http://stomp.github.com/stomp-specification-1.1.html#ERROR)
                         case 'ERROR':
-                            // observer.error(frame)
+                            if(this.onErrorReceived) this.onErrorReceived()(frame)
                             break;
                         default:
                             this._debug('Unhandled frame: ${frame}');
