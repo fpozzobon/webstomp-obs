@@ -11,19 +11,51 @@ re-written to use rxjs Observables. All credits goes to the original authors: JÃ
 
 Only ES5 compatible modern browsers are supported. If you need a websocket polyfill you can use [sockjs](http://sockjs.org)
 
+## nodejs support
+
+As nodejs does not have a WebSocket object like browsers have, you must choose a websocket client and use [webstompobs.over](https://github.com/fpozzobon/webstomp-obs#over) instead of `webstompobs.client`. Choosing a good client is maybe the most difficult part:
+* [websocket](https://www.npmjs.com/package/websocket)
+* [ws](https://www.npmjs.com/package/ws)
+* [sockjs](https://www.npmjs.com/package/sockjs-client) If your server part is also SockJS
+* ... add yours
+
 ## Example
 
 `npm run example` will open examples in browser and try to connect to [RabbitMQ Web-Stomp](https://www.rabbitmq.com/web-stomp.html) default Web Sockets url.
+
+## Use
+
+`npm install webstomp-obs`
+
+### Web browser old fashion style
+
+```html
+<script type="text/javascript" src="node_modules/webstomp-obs/dist/webstompobs.js"></script>
+```
+
+`webstompobs` will be a global variable.
+
+### CommonJS
+
+```js
+var webstompobs = require('webstompobs');
+```
+
+### ES6 modules
+
+```
+import webstompobs from 'webstompobs';
+```
 
 ## API
 
 Jeff Mesnil stomp-websocket [documentation](http://jmesnil.net/stomp-websocket/doc/) is still a must read even if the API [evolved](CHANGELOG.md) a little
 
-### stompobs
+### webstompobs
 
 #### client(url, [options], protocols? )
 
-Uses global `WebSocket` object for you to return a stompobs `Client` object.
+Uses global `WebSocket` object for you to return a webstompobs `Client` object.
 with protocols by default to `['v10.stomp', 'v11.stomp', 'v12.stomp']`
 
 ##### url<String>
@@ -67,7 +99,7 @@ List all websocket STOMP protocols supported. Useful when creating your own `Web
 
 ### Client
 
-A client instance can and should be created through `stompobs.client` or `stompobs.over`
+A client instance can and should be created through `webstompobs.client` or `webstompobs.over`
 
 #### connect
 
