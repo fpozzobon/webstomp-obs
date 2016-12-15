@@ -1,6 +1,6 @@
 {
   "name": "webstomp-obs",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Stomp over websocket using observable",
   "main": "./webstompobs.js",
   "typings": "./types/index.d.ts",
@@ -28,6 +28,14 @@
   ],
   "author": "F. Pozzobon",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fpozzobon/webstomp-obs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fpozzobon/webstomp-obs/issues"
+  },
+  "homepage": "https://github.com/fpozzobon/webstomp-obs#readme",
   "devDependencies": {
     "chai": "^3.5.0",
     "http-server": "^0.9.0",
