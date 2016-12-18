@@ -30,7 +30,7 @@ As nodejs does not have a WebSocket object like browsers have, you must choose a
 ### Web browser old fashion style
 
 ```html
-<script type="text/javascript" src="node_modules/webstomp-obs/dist/webstompobs.js"></script>
+<script type="text/javascript" src="node_modules/webstomp-obs/webstompobs.js"></script>
 ```
 
 `webstompobs` will be a global variable.
@@ -38,13 +38,13 @@ As nodejs does not have a WebSocket object like browsers have, you must choose a
 ### CommonJS
 
 ```js
-var webstompobs = require('webstompobs');
+var webstompobs = require('webstomp-obs');
 ```
 
 ### ES6 modules
 
 ```
-import webstompobs from 'webstompobs';
+import webstompobs from 'webstomp-obs';
 ```
 
 ## API
