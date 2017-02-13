@@ -21,7 +21,7 @@ As nodejs does not have a WebSocket object like browsers have, you must choose a
 
 ## Example
 
-`npm run example` will open examples in browser and try to connect to [RabbitMQ Web-Stomp](https://www.rabbitmq.com/web-stomp.html) default Web Sockets url.
+Go into example folder, `npm run example` will open examples in browser and try to connect to [RabbitMQ Web-Stomp](https://www.rabbitmq.com/web-stomp.html) default Web Sockets url.
 
 ## Use
 

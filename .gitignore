@@ -44,3 +44,4 @@ webstompobs.js
 
 # Output Directory
 dist
+example/index.js

@@ -13,14 +13,12 @@
   },
   "filesGlob": [
     "./**/*.ts",
-    "!./node_modules/**/*.ts",
-    "!./example/**/*.ts"
+    "!./node_modules/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "test",
     "typings/globals",
-    "typings/global.d.ts",
-    "example"
+    "typings/global.d.ts"
   ]
 }
