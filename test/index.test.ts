@@ -23,7 +23,6 @@ describe ('Stompobservable index', () => {
 
     describe ('client function', () => {
 
-
         beforeEach( () => {
             Client.default = Sinon.stub()
         })

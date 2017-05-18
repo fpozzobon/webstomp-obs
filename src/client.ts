@@ -40,7 +40,6 @@ class Client {
 
 
     constructor (createWsConnection: () => IWebSocket, options: ClientOptions) {
-        console.log('BUILD')
         this.wsHandler = new WebSocketHandler(createWsConnection, options);
         this.nbConnectAttempt = 0;
         this.maxConnectAttempt = options.maxConnectAttempt || DEFAULT_MAX_CONNECT_ATTEMPT;
@@ -49,14 +48,6 @@ class Client {
 
     // [CONNECT Frame](http://stomp.github.com/stomp-specification-1.1.html#CONNECT_or_STOMP_Frame)
     //
-    // The 'connect' method accepts different number of arguments and types:
-    //
-    // * 'connect(headers)'
-    // * 'connect(headers)'
-    // * 'connect(headers, onReceiveCallback)'
-    // * 'connect(headers, onReceiveCallback, onReceiptCallback)'
-    //
-    // The onReceiveCallback and onReceiptCallback are optional
     // Return an Observable containing the connectedClient
     public connect = (headers: ConnectionHeaders): Observable<ConnectedClient> => {
 

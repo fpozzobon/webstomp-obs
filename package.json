@@ -1,6 +1,6 @@
 {
   "name": "webstomp-obs",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Stomp over websocket using observable",
   "main": "./webstompobs.js",
   "typings": "./types/index.d.ts",
@@ -8,7 +8,7 @@
     "build": "webpack && webpack -p",
     "test": "mocha --opts mocha.opts",
     "test:auto": "mocha --opts mocha.opts --watch",
-    "prepublish": "webpack -n && in-publish || not-in-publish"
+    "publish": "webpack -n && in-publish || not-in-publish"
   },
   "keywords": [
     "typescript",
@@ -36,6 +36,11 @@
   },
   "homepage": "https://github.com/fpozzobon/webstomp-obs#readme",
   "devDependencies": {
+    "@types/chai": "^3.5.2",
+    "@types/es6-shim": "^0.31.33",
+    "@types/mocha": "^2.2.41",
+    "@types/requirejs": "^2.1.29",
+    "@types/sinon": "^2.2.2",
     "chai": "^3.5.0",
     "in-publish": "^2.0.0",
     "mocha": "^3.2.0",
@@ -47,6 +52,6 @@
     "tslint-loader": "^3.4.2",
     "typescript": "^2.1.6",
     "webpack": "^1.12.14",
-    "yargs": "^6.4.0"
+    "yargs": "^8.0.1"
   }
 }
