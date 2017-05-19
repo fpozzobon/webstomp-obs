@@ -163,7 +163,6 @@ class WebSocketHandler {
             };
             this.ws.onclose = (ev: any) => {
                 this._debug('Whoops! Lost connection to ${this.ws.url}:', ev);
-                // observer.error(ev)
                 onDisconnect (ev);
             };
             this.ws.onopen = () => {

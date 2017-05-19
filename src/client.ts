@@ -41,7 +41,7 @@ class Client {
 
     constructor (createWsConnection: () => IWebSocket, options: ClientOptions) {
         this.wsHandler = new WebSocketHandler(createWsConnection, options);
-        this.nbConnectAttempt = 0;
+        this.nbConnectAttempt = 1;
         this.maxConnectAttempt = options.maxConnectAttempt || DEFAULT_MAX_CONNECT_ATTEMPT;
         this.ttlConnectAttempt =  options.ttlConnectAttempt || DEFAULT_TTL_CONNECT_ATTEMPT;
     }
@@ -79,12 +79,10 @@ class Client {
     private __initConnectedClient = (headers: any,
                           currentObserver: Observer<ConnectedClient>) => {
 
-        let connectedClient: ConnectedClient = new ConnectedClient(this.wsHandler);
-
         // we initialize the connection
         this.wsHandler.initConnection(headers,
-            (ev: any) => {
-                if (this.nbConnectAttempt < this.maxConnectAttempt) {
+            () => {
+                if (this.maxConnectAttempt === -1 || this.nbConnectAttempt < this.maxConnectAttempt) {
                     this.nbConnectAttempt ++;
                     clearTimeout(this.connectTimeout)
                     this.connectTimeout = setTimeout (
@@ -99,8 +97,8 @@ class Client {
             }
         ).subscribe(() => {
             clearTimeout(this.connectTimeout)
-            this.nbConnectAttempt = 0;
-            currentObserver.next(connectedClient);
+            this.nbConnectAttempt = 1;
+            currentObserver.next(new ConnectedClient(this.wsHandler));
         });
 
     }

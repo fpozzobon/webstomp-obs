@@ -128,8 +128,8 @@
 
                 var form = roomEl.querySelector('form');
                 form.addEventListener('submit', function(ev) {
-                    onSend(client);
                     ev.preventDefault();
+                    onSend(client);
                     return false;
                 });
 

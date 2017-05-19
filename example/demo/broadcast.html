@@ -92,7 +92,7 @@
             var url = 'ws://localhost:61614',
             login = 'admin', password = 'admin';
 
-            var wsClient = webstompobs.default.client(url)
+            var wsClient = webstompobs.default.client(url, {maxConnectAttempt: -1, ttlConnectAttempt: 100})
 
             var sourceConnection = wsClient.connect({login: login, passcode: password});
 

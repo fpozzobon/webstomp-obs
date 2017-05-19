@@ -7,6 +7,26 @@ This library provides a [stomp](https://stomp.github.io/) client for Web browser
 This is a fork of the original [webstomp-client] (https://github.com/JSteunou/webstomp-client) (which is a fork of the original [stomp-websocket](https://github.com/jmesnil/stomp-websocket))
 re-written to use rxjs Observables. All credits goes to the original authors: Jérôme Steunou & Jeff Mesnil & Jeff Lindsay.
 
+## Additional functionalities
+
+#### Shared websocket connection :
+
+When you connect a client instance via `connect`, all subscribers to the same Observable will use the same connection.
+
+#### Automatic reconnection :
+
+As described in options, it is possible to setup an automatic reconnection.
+When the connection will be available, a new connectedClient will be given back to all the subscribers of that source.
+
+#### Automatic disconnection :
+
+When the last subscriber to `connect` unsubscribe, the connection is automatically closed.
+Note : the connection is automatically restarted on first subscribe
+
+#### Automatic resubscribe to queue / topic after reconnection :
+
+As we use the observable, it is easy to resubscribe automatically to the queue / topic that were already subscribed to (see tasks example) when the reconnection happens.
+
 ## Browsers support
 
 Only ES5 compatible modern browsers are supported. If you need a websocket polyfill you can use [sockjs](http://sockjs.org)
@@ -65,7 +85,7 @@ Web Sockets endpoint url
 ##### options<Object>
 
 * maxConnectAttempt: default to 10 - number of reconnecting attempt before throwing an error (calling createWsConnection to attempt the connection)
-  note : -1 won't try to reconnect at all
+  note : 0 won't try to reconnect at all and -1 will infinitely try to reconnect
 * ttlConnectAttempt: default to 1000 - each attempt of reconnection will wait ttlConnectAttempt * <reconnection attempt number> before reconnecting
 * binary: default to `false`. See [binary](#binary) section.
 * heartbeat: default to `{incoming: 10000, outgoing: 10000}`. You can provide `false` to cut it (recommended when the server is a SockJS server) or a definition object.

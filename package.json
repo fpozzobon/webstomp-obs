@@ -1,6 +1,6 @@
 {
   "name": "webstomp-obs",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Stomp over websocket using observable",
   "main": "./webstompobs.js",
   "typings": "./types/index.d.ts",
@@ -22,6 +22,7 @@
     "types",
     "src",
     "webstompobs.js",
+    "webstompobs.min.js",
     "*.md",
     "LICENCE"
   ],
