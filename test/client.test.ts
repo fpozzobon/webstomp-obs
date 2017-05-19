@@ -121,6 +121,19 @@ describe ('Stompobservable client', () => {
             disconnectCallback()
         })
 
+        it ('should call back onConnectionFailed if disconnect', (done) => {
+            const onConnectionFailedSpy = Sinon.stub()
+            testedClient.connect({}, onConnectionFailedSpy)
+                        .subscribe(
+                            (connectedClient) => done("unexpected"),
+                            (err) => done(err),
+                            () => done("unexpected")
+                        )
+            disconnectCallback()
+            Sinon.assert.calledOnce(onConnectionFailedSpy)
+            done()
+        })
+
         it ('should automatically reconnect after disconnect', (done) => {
             let nbCall = 0;
             testedClient.connect({})

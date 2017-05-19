@@ -51,11 +51,12 @@ class Client {
     // [CONNECT Frame](http://stomp.github.com/stomp-specification-1.1.html#CONNECT_or_STOMP_Frame)
     //
     // Return an Observable containing the connectedClient
-    public connect = (headers: ConnectionHeaders): Observable<ConnectedClient> => {
+    public connect = (headers: ConnectionHeaders,
+                      onConnectionFailed?: (ev: any) => void): Observable<ConnectedClient> => {
 
         // create one and only one dedicated observable per destination
         if (!this.observableConnection) {
-            const multicastConnection: ConnectableObservable<ConnectedClient> = this.__connect(headers)
+            const multicastConnection: ConnectableObservable<ConnectedClient> = this.__connect(headers, onConnectionFailed)
                                                                                     .multicast(() => new ReplaySubject(1));
             multicastConnection.connect();
             this.observableConnection = multicastConnection.refCount();
@@ -64,12 +65,13 @@ class Client {
 
     }
 
-    private __connect = (headers: ConnectionHeaders): Observable<ConnectedClient> => {
+    private __connect = (headers: ConnectionHeaders,
+                         onConnectionFailed?: (ev: any) => void): Observable<ConnectedClient> => {
 
         return Observable.create(
             (observer: Observer<ConnectedClient>) => {
                 // we initialize only once the connection
-                this.__initConnectedClient( headers, observer)
+                this.__initConnectedClient( headers, observer, onConnectionFailed)
                 // when unsubscribe, we disconnect the websocket
                 return () => {
                     this.isConnected && this.wsHandler.disconnect(headers);
@@ -79,21 +81,23 @@ class Client {
     }
 
     private __initConnectedClient = (headers: any,
-                          currentObserver: Observer<ConnectedClient>) => {
+                          currentObserver: Observer<ConnectedClient>,
+                          onConnectionFailed?: (ev: any) => void) => {
 
         clearTimeout(this.connectTimeout)
         // we initialize the connection
         this.wsHandler.initConnection(headers,
-            () => {
+            (ev: any) => {
+                onConnectionFailed && onConnectionFailed(ev);
                 this.isConnected = false;
                 if (this.maxConnectAttempt === -1 || this.nbConnectAttempt < this.maxConnectAttempt) {
-                    this.nbConnectAttempt ++;
                     this.connectTimeout = setTimeout (
                         // when unexpected disconnection happens, we reconnect
                         () => this.__initConnectedClient(headers,
                             currentObserver),
                         this.nbConnectAttempt * this.ttlConnectAttempt
-                    )
+                    );
+                    this.nbConnectAttempt ++;
                 } else {
                     currentObserver.error('Attempted to connect ' + this.nbConnectAttempt + ' failed.');
                 }
