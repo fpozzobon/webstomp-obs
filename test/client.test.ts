@@ -112,7 +112,7 @@ describe ('Stompobservable client', () => {
                         .subscribe(
                             (connectedClient) => done("unexpected"),
                             (err) => {
-                                Sinon.assert.calledOnce(disconnectSpy)
+                                Sinon.assert.notCalled(disconnectSpy)
                                 done()
                             },
                             () => done("unexpected")
@@ -128,6 +128,7 @@ describe ('Stompobservable client', () => {
                 (connectedClient) => {
                     expect(connectedClient).to.equal(MockedCC.ConnectedClient.getCall(nbCall).returnValue)
                     if (nbCall > 0) {
+                        Sinon.assert.notCalled(disconnectSpy)
                         Sinon.assert.calledTwice(initConnectionSpy)
                         done()
                     }
@@ -139,6 +140,82 @@ describe ('Stompobservable client', () => {
             connectCallback()
             disconnectCallback()
             setTimeout(connectCallback, 100)
+        })
+
+    })
+
+    describe ('unsubscribe to a connection', () => {
+
+        let testedClient
+        let disconnectSpy
+        let webSocketHandlerInstance
+        let source
+
+        beforeEach( () => {
+            testedClient = new Client(expectedCreateWsConnection, expectedOptions)
+            webSocketHandlerInstance = WebSocketHandler.default.getCall(0).returnValue
+            disconnectSpy = Sinon.spy(webSocketHandlerInstance, 'disconnect')
+            source = testedClient.connect({})
+        })
+
+        afterEach( () => {
+            disconnectSpy.reset()
+        })
+
+        it ('should automatically disconnect after unsubscribe', (done) => {
+            let nbCall = 0;
+            const subscription = source.subscribe(
+                    (connectedClient) => {
+                        if (nbCall > 0) {
+                            done("unexpected")
+                        }
+                        nbCall++;
+                    },
+                    (err) => done("unexpected " + err),
+                    () => done("unexpected")
+                )
+            connectCallback()
+            
+            subscription.unsubscribe()
+            Sinon.assert.calledOnce(disconnectSpy)
+            done()
+            
+        })
+        
+        it ('should automatically disconnect after the last unsubscribe', (done) => {
+            let nbCall = 0;
+            const subscription1 = source.subscribe(
+                    (connectedClient) => null,
+                    (err) => done("unexpected " + err),
+                    () => done("unexpected")
+                )
+            const subscription2 = source.subscribe(
+                    (connectedClient) => null,
+                    (err) => done("unexpected " + err),
+                    () => done("unexpected")
+                )
+            connectCallback()
+            
+            subscription1.unsubscribe()
+            Sinon.assert.notCalled(disconnectSpy)
+            subscription2.unsubscribe()
+            Sinon.assert.calledOnce(disconnectSpy)
+            done()
+            
+        })
+
+        it ('should not disconnect after unsubscribe if not connected', (done) => {
+            let nbCall = 0;
+            const subscription = source.subscribe(
+                    (connectedClient) => null,
+                    (err) => done("unexpected " + err),
+                    () => done("unexpected")
+                )
+            
+            subscription.unsubscribe()
+            Sinon.assert.notCalled(disconnectSpy)
+            done()
+            
         })
 
     })

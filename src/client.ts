@@ -37,6 +37,7 @@ class Client {
     private connectTimeout: any
     private maxConnectAttempt: number
     private ttlConnectAttempt: number
+    private isConnected: boolean
 
 
     constructor (createWsConnection: () => IWebSocket, options: ClientOptions) {
@@ -44,6 +45,7 @@ class Client {
         this.nbConnectAttempt = 1;
         this.maxConnectAttempt = options.maxConnectAttempt || DEFAULT_MAX_CONNECT_ATTEMPT;
         this.ttlConnectAttempt =  options.ttlConnectAttempt || DEFAULT_TTL_CONNECT_ATTEMPT;
+        this.isConnected = false;
     }
 
     // [CONNECT Frame](http://stomp.github.com/stomp-specification-1.1.html#CONNECT_or_STOMP_Frame)
@@ -70,7 +72,7 @@ class Client {
                 this.__initConnectedClient( headers, observer)
                 // when unsubscribe, we disconnect the websocket
                 return () => {
-                    this.wsHandler.disconnect(headers);
+                    this.isConnected && this.wsHandler.disconnect(headers);
                 }
             })
 
@@ -79,12 +81,13 @@ class Client {
     private __initConnectedClient = (headers: any,
                           currentObserver: Observer<ConnectedClient>) => {
 
+        clearTimeout(this.connectTimeout)
         // we initialize the connection
         this.wsHandler.initConnection(headers,
             () => {
+                this.isConnected = false;
                 if (this.maxConnectAttempt === -1 || this.nbConnectAttempt < this.maxConnectAttempt) {
                     this.nbConnectAttempt ++;
-                    clearTimeout(this.connectTimeout)
                     this.connectTimeout = setTimeout (
                         // when unexpected disconnection happens, we reconnect
                         () => this.__initConnectedClient(headers,
@@ -96,7 +99,7 @@ class Client {
                 }
             }
         ).subscribe(() => {
-            clearTimeout(this.connectTimeout)
+            this.isConnected = true;
             this.nbConnectAttempt = 1;
             currentObserver.next(new ConnectedClient(this.wsHandler));
         });
