@@ -85,7 +85,7 @@ export class ConnectedClient {
 
     // on Message event
     // return true if it can handle the reception, false otherwise
-    private _onMessageReceivedFn = (subscription: number): (Frame) => void => {
+    private _onMessageReceivedFn = (subscription: string): (Frame) => void => {
         // the `_onMessageReceivedFn` callback is registered when the client calls
         // `subscribe()`.
         const onreceive: (Frame) => void = this.subscriptions[subscription] && this.subscriptions[subscription].next.bind(this.subscriptions[subscription]);
@@ -112,8 +112,8 @@ export class ConnectedClient {
 
     // [SEND Frame](http://stomp.github.com/stomp-specification-1.1.html#SEND)
     public send = (destination: string, body: string = '', headers: ExtendedHeaders = {}): void => {
-        headers.destination = destination;
-        this.webSocketClient.send(headers, body);
+        const headerToSend = { ...headers, destination};
+        this.webSocketClient.send(headerToSend, body);
     }
 
     // [BEGIN Frame](http://stomp.github.com/stomp-specification-1.1.html#BEGIN)
@@ -191,7 +191,6 @@ export class ConnectedClient {
             return () => {
                 this.webSocketClient.unSubscribe(headers);
                 delete this.subscriptions[headers.id];
-                headers.id = headers.id;
             };
         })
 

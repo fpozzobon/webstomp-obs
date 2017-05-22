@@ -2,42 +2,49 @@ import { expect } from 'chai'
 import * as Sinon from 'sinon'
 import Client, {ClientOptions} from '../src/client'
 import { Observable } from 'rxjs/Observable'
-
-let MockedCC = require ('../src/connectedClient')
-let WebSocketHandler = require ('../src/webSocketHandler')
+import * as connectedClient from '../src/connectedClient'
+import * as WebSocketHandler from '../src/webSocketHandler'
 
 describe ('Stompobservable client', () => {
+    const TTL = 100
     let expectedCreateWsConnection 
     let expectedOptions
     let connectCallback
-    let disconnectCallback;
-
-    beforeEach( () => {
-        MockedCC.ConnectedClient = Sinon.stub()
-        WebSocketHandler.default = Sinon.stub().returns({
-            initConnection: (headers: any,
+    let disconnectCallback
+    const connectedClientSpy = Sinon.spy(connectedClient, 'ConnectedClient')
+    const webSocketHandlerMock = {
+        initConnection: (headers: any,
                              onDisconnect: (ev: any) => void) => {
                                  disconnectCallback = onDisconnect
                                  return Observable.create((observer) => connectCallback = () => observer.next(null))
                                 },
-            disconnect: () => null
-        })
+        disconnect: Sinon.stub()
+    }
+    let webSocketHandlerSpy = Sinon.stub(WebSocketHandler, 'default')
+    const initConnectionSpy = Sinon.spy(webSocketHandlerMock, 'initConnection')
+
+    beforeEach( () => {
+        webSocketHandlerSpy.returns(webSocketHandlerMock)
         expectedCreateWsConnection = Sinon.stub()
-        expectedOptions = {maxConnectAttempt: 2, ttlConnectAttempt: 1}
+        expectedOptions = {maxConnectAttempt: 2, ttlConnectAttempt: TTL}
+        this.clock = Sinon.useFakeTimers()
     })
 
     afterEach( () => {
-        MockedCC.ConnectedClient.reset()
-        WebSocketHandler.default.reset()
+        connectedClientSpy.reset()
+        webSocketHandlerSpy.reset()
         expectedCreateWsConnection.reset()
+        webSocketHandlerMock.disconnect.reset()
+        initConnectionSpy.reset()
+        this.clock.restore()
     })
 
     describe ('constructor', () => {
 
         it ('should create a new WebSocketHandler passing createWsConnection and options parameters', () => {
             const actualClient = new Client(expectedCreateWsConnection, expectedOptions)
-            expect(WebSocketHandler.default.calledWithNew()).to.be.true
-            Sinon.assert.calledWith(WebSocketHandler.default, expectedCreateWsConnection, expectedOptions)
+            expect(webSocketHandlerSpy.calledWithNew()).to.be.true
+            Sinon.assert.calledWith(webSocketHandlerSpy, expectedCreateWsConnection, expectedOptions)
         })
 
     })
@@ -45,17 +52,11 @@ describe ('Stompobservable client', () => {
     describe ('connect', () => {
         let testedClient
         const expectedHeaders = Sinon.stub() as any
-        let initConnectionSpy
         let webSocketHandlerInstance
 
         beforeEach( () => {
             testedClient = new Client(expectedCreateWsConnection, expectedOptions)
-            webSocketHandlerInstance = WebSocketHandler.default.getCall(0).returnValue
-            initConnectionSpy = Sinon.spy(webSocketHandlerInstance, 'initConnection')
-        })
-
-        afterEach( () => {
-            initConnectionSpy.reset()
+            webSocketHandlerInstance = webSocketHandlerSpy.getCall(0).returnValue
         })
 
         it ('should create an Observable', () => {
@@ -76,29 +77,20 @@ describe ('Stompobservable client', () => {
     describe ('subscribe to a connected client', () => {
 
         let testedClient
-        let initConnectionSpy
-        let disconnectSpy
         let webSocketHandlerInstance
 
         beforeEach( () => {
             testedClient = new Client(expectedCreateWsConnection, expectedOptions)
-            webSocketHandlerInstance = WebSocketHandler.default.getCall(0).returnValue
-            initConnectionSpy = Sinon.spy(webSocketHandlerInstance, 'initConnection')
-            disconnectSpy = Sinon.spy(webSocketHandlerInstance, 'disconnect')
-        })
-
-        afterEach( () => {
-            initConnectionSpy.reset()
-            disconnectSpy.reset()
+            webSocketHandlerInstance = webSocketHandlerSpy.getCall(0).returnValue
         })
 
         it ('should call success for the subscribed observer if it connects', (done) => {
             testedClient.connect({})
                         .subscribe(
-                            (connectedClient) => {
-                                expect(MockedCC.ConnectedClient.calledWithNew()).to.be.true
-                                Sinon.assert.calledWith(MockedCC.ConnectedClient, webSocketHandlerInstance)
-                                expect(connectedClient).to.equal(MockedCC.ConnectedClient.getCall(0).returnValue)
+                            (client) => {
+                                expect(connectedClientSpy.calledWithNew()).to.be.true
+                                Sinon.assert.calledWith(connectedClientSpy, webSocketHandlerInstance)
+                                expect(client).to.equal(connectedClientSpy.getCall(0).returnValue)
                                 done()
                             },
                             (err) => done("unexpected " + err),
@@ -110,9 +102,9 @@ describe ('Stompobservable client', () => {
         it ('should call error for the subscribed observer if it does not connect after n attempts', (done) => {
             testedClient.connect({})
                         .subscribe(
-                            (connectedClient) => done("unexpected"),
+                            (client) => done("unexpected"),
                             (err) => {
-                                Sinon.assert.notCalled(disconnectSpy)
+                                Sinon.assert.notCalled(webSocketHandlerMock.disconnect)
                                 done()
                             },
                             () => done("unexpected")
@@ -125,7 +117,7 @@ describe ('Stompobservable client', () => {
             const onConnectionFailedSpy = Sinon.stub()
             testedClient.connect({}, onConnectionFailedSpy)
                         .subscribe(
-                            (connectedClient) => done("unexpected"),
+                            (client) => done("unexpected"),
                             (err) => done(err),
                             () => done("unexpected")
                         )
@@ -138,10 +130,10 @@ describe ('Stompobservable client', () => {
             let nbCall = 0;
             testedClient.connect({})
             .subscribe(
-                (connectedClient) => {
-                    expect(connectedClient).to.equal(MockedCC.ConnectedClient.getCall(nbCall).returnValue)
+                (client) => {
+                    expect(client).to.equal(connectedClientSpy.getCall(nbCall).returnValue)
                     if (nbCall > 0) {
-                        Sinon.assert.notCalled(disconnectSpy)
+                        Sinon.assert.notCalled(webSocketHandlerMock.disconnect)
                         Sinon.assert.calledTwice(initConnectionSpy)
                         done()
                     }
@@ -152,7 +144,8 @@ describe ('Stompobservable client', () => {
             )
             connectCallback()
             disconnectCallback()
-            setTimeout(connectCallback, 100)
+            this.clock.tick(TTL)
+            connectCallback()
         })
 
     })
@@ -160,25 +153,17 @@ describe ('Stompobservable client', () => {
     describe ('unsubscribe to a connection', () => {
 
         let testedClient
-        let disconnectSpy
-        let webSocketHandlerInstance
         let source
 
         beforeEach( () => {
             testedClient = new Client(expectedCreateWsConnection, expectedOptions)
-            webSocketHandlerInstance = WebSocketHandler.default.getCall(0).returnValue
-            disconnectSpy = Sinon.spy(webSocketHandlerInstance, 'disconnect')
             source = testedClient.connect({})
-        })
-
-        afterEach( () => {
-            disconnectSpy.reset()
         })
 
         it ('should automatically disconnect after unsubscribe', (done) => {
             let nbCall = 0;
             const subscription = source.subscribe(
-                    (connectedClient) => {
+                    (client) => {
                         if (nbCall > 0) {
                             done("unexpected")
                         }
@@ -190,7 +175,7 @@ describe ('Stompobservable client', () => {
             connectCallback()
             
             subscription.unsubscribe()
-            Sinon.assert.calledOnce(disconnectSpy)
+            Sinon.assert.calledOnce(webSocketHandlerMock.disconnect)
             done()
             
         })
@@ -198,21 +183,21 @@ describe ('Stompobservable client', () => {
         it ('should automatically disconnect after the last unsubscribe', (done) => {
             let nbCall = 0;
             const subscription1 = source.subscribe(
-                    (connectedClient) => null,
+                    (client) => null,
                     (err) => done("unexpected " + err),
                     () => done("unexpected")
                 )
             const subscription2 = source.subscribe(
-                    (connectedClient) => null,
+                    (client) => null,
                     (err) => done("unexpected " + err),
                     () => done("unexpected")
                 )
             connectCallback()
             
             subscription1.unsubscribe()
-            Sinon.assert.notCalled(disconnectSpy)
+            Sinon.assert.notCalled(webSocketHandlerMock.disconnect)
             subscription2.unsubscribe()
-            Sinon.assert.calledOnce(disconnectSpy)
+            Sinon.assert.calledOnce(webSocketHandlerMock.disconnect)
             done()
             
         })
@@ -220,13 +205,13 @@ describe ('Stompobservable client', () => {
         it ('should not disconnect after unsubscribe if not connected', (done) => {
             let nbCall = 0;
             const subscription = source.subscribe(
-                    (connectedClient) => null,
+                    (client) => null,
                     (err) => done("unexpected " + err),
                     () => done("unexpected")
                 )
             
             subscription.unsubscribe()
-            Sinon.assert.notCalled(disconnectSpy)
+            Sinon.assert.notCalled(webSocketHandlerMock.disconnect)
             done()
             
         })

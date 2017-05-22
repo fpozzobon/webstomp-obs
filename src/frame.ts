@@ -4,7 +4,7 @@ export interface FrameHeader {
     [key: string]: any;
     server: any;
     version: any;
-    subscription: number;
+    subscription: string;
     ack: any;
 }
 

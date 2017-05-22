@@ -47,7 +47,7 @@ class WebSocketHandler {
     private pinger: any
     private ponger: any
 
-    public onMessageReceived: (subscription: number) => (Frame) => void
+    public onMessageReceived: (subscription: string) => (Frame) => void
     public onMessageReceipted: () => (Frame) => void
     public onErrorReceived: () => (Frame) => void
 
@@ -120,7 +120,7 @@ class WebSocketHandler {
                             // This is useful for subscriptions that are automatically created
                             // on the browser side (e.g. [RabbitMQ's temporary
                             // queues](http://www.rabbitmq.com/stomp.html)).
-                            const subscription: number = frame.headers.subscription;
+                            const subscription: string = frame.headers.subscription;
 
                             const onreceive: Function = this.onMessageReceived && this.onMessageReceived(subscription);
                             if (onreceive) {
