@@ -221,6 +221,37 @@ describe ('Stompobservable connectedClient', () => {
 
     })
 
+    describe ('connectionError', () => {
+
+        it ('should give back an observable', () => {
+            const actualReceiptObservable = client.connectionError()
+
+            expect(actualReceiptObservable).to.exist
+            expect(actualReceiptObservable).to.be.instanceof(Observable)
+        })
+
+        it ('should not create a new observable', () => {
+            const actualReceiptObservable = client.connectionError()
+            const otherReceiptObservable = client.connectionError()
+
+            expect(otherReceiptObservable).to.equal(actualReceiptObservable)
+        })
+
+        it ('should give back the connectionError to the subscribers when webSocketClient.onConnectionError is called', (done) => {
+            const expectedError = Sinon.stub()
+            client.connectionError().subscribe(
+                (error) => {
+                    expect(error).to.equal(expectedError)
+                    done()
+                },
+                (err) => done("unexpected " + err),
+                () => done("unexpected")
+            )
+            mockedWebSocketHandlerSpy.onConnectionError()(expectedError)
+        })
+
+    })
+
     describe ('subscribe', () => {
 
         beforeEach ( () => {

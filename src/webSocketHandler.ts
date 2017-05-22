@@ -50,6 +50,7 @@ class WebSocketHandler {
     public onMessageReceived: (subscription: string) => (Frame) => void
     public onMessageReceipted: () => (Frame) => void
     public onErrorReceived: () => (Frame) => void
+    public onConnectionError: () => (ev: any) => void
 
     constructor(createWsConnection: () => IWebSocket, options: WsOptions) {
 
@@ -163,6 +164,7 @@ class WebSocketHandler {
             };
             this.ws.onclose = (ev: any) => {
                 this._debug('Whoops! Lost connection to ${this.ws.url}:', ev);
+                this.onConnectionError && this.onConnectionError()(ev);
                 onDisconnect (ev);
             };
             this.ws.onopen = () => {

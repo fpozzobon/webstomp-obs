@@ -52,6 +52,32 @@ export class Chat {
     )
   }
 
+  public onError = (onErrorMsgFn: Function): void => {
+    this.onConnect(
+      (connectedClient: ConnectedClient) => {
+        connectedClient.error()
+          .subscribe(
+              function (message) {
+                  onErrorMsgFn(message)
+              }
+          )
+      }
+    )
+  }
+
+  public onConnectionError = (onConnectionErrorMsgFn: Function): void => {
+    this.onConnect(
+      (connectedClient: ConnectedClient) => {
+        connectedClient.connectionError()
+          .subscribe(
+              function (message) {
+                  onConnectionErrorMsgFn(message)
+              }
+          )
+      }
+    )
+  }
+
   public sendBroadcast = (message: string) : void => {
     Observable.from(this.sourceConnection).first().subscribe(
       (connectedClient: ConnectedClient) => {

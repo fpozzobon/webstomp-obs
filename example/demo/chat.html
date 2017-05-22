@@ -158,13 +158,19 @@
                 input.value = '';
             }
 
-
             var chat1 = new webstompobsexample.Chat(url, login, password, topic);
-            var chat2 = new webstompobsexample.Chat(url, login, password, topic);
+            
             chat1.onConnect(function() { onConnect('a') } )
             chat1.onMessage(function(message) { onMessage('a', message)}, function(error) { onError('a', error)} )
+            chat1.onConnectionError(function(error) { onError('a', error) })
+            chat1.onError(function(error) { onError('a', error) })
+
+            var chat2 = new webstompobsexample.Chat(url, login, password, topic);
+
             chat2.onConnect(function() { onConnect('b') })
             chat2.onMessage(function(message) { onMessage('b', message)}, function(error) { onError('b', error) } )
+            chat2.onConnectionError(function(error) { onError('b', error) })
+            chat2.onError(function(error) { onError('b', error) })
 
         });
     </script>

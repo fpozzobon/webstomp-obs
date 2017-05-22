@@ -16,7 +16,7 @@
   "author": "F. Pozzobon",
   "license": "Apache-2.0",
   "devDependencies": {
-    "webstomp-obs": "^1.0.2",
+    "webstomp-obs": "^1.0.6",
     "http-server": "^0.9.0",
     "opn-cli": "^3.1.0",
     "rxjs": "^5.1.1",

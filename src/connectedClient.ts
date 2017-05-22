@@ -69,6 +69,8 @@ export class ConnectedClient {
     private broadcastReceipterObserver: Observer<Frame>
     private broadcastErrorObservable: Observable<Frame>
     private broadcastErrorObserver: Observer<Frame>
+    private broadcastConnectionErrorObservable: Observable<any>
+    private broadcastConnectionErrorObserver: Observer<any>
 
     constructor(webSocketClient: WebSocketHandler) {
 
@@ -76,6 +78,7 @@ export class ConnectedClient {
         this.webSocketClient.onMessageReceived = this._onMessageReceivedFn
         this.webSocketClient.onMessageReceipted = this._onMessageReceiptedFn
         this.webSocketClient.onErrorReceived = this._onErrorReceivedFn
+        this.webSocketClient.onConnectionError = this._onConnectionErrorReceivedFn
         // used to index subscribers
         this.counter = 0;
         // subscription callbacks indexed by subscriber's ID
@@ -97,8 +100,19 @@ export class ConnectedClient {
     private _onErrorReceivedFn = (): (Frame) => void => {
         // the `_onErrorReceivedFn` callback is registered when the client calls
         // `error()`.
-        const onerror: (Frame) => void = this.broadcastErrorObserver && this.broadcastErrorObserver.next.bind(this.broadcastErrorObserver);
+        const onerror: (Frame) => void = this.broadcastErrorObserver &&
+                                         this.broadcastErrorObserver.next.bind(this.broadcastErrorObserver);
         return onerror
+    }
+
+    // on Connection Error Received event
+    // return true if it can handle the reception, false otherwise
+    private _onConnectionErrorReceivedFn = (): (ev: any) => void => {
+        // the `_onConnectionErrorReceivedFn` callback is registered when the client calls
+        // `connectionError()`.
+        const onConnectionError: (ev: any) => void = this.broadcastConnectionErrorObserver &&
+                                                     this.broadcastConnectionErrorObserver.next.bind(this.broadcastConnectionErrorObserver);
+        return onConnectionError
     }
 
     // on Message Receipt event
@@ -158,7 +172,26 @@ export class ConnectedClient {
         return this.broadcastReceipterObservable;
 
     }
+    
+    // Return an Observable containing the event when a connection error occure
+    public connectionError = (): Observable<any> => {
 
+        // create one and only one broadcast receiver
+        if (!this.broadcastConnectionErrorObservable) {
+            const connectionErrorSubscribe: ConnectableObservable<any> = Observable.create((observer: Observer<any>) => {
+                    this.broadcastConnectionErrorObserver = observer
+                })
+                .finally(() => this.broadcastConnectionErrorObserver ? this.broadcastConnectionErrorObserver = null : null)
+                .multicast(() => new Subject())
+
+            connectionErrorSubscribe.connect();
+            this.broadcastConnectionErrorObservable = connectionErrorSubscribe.refCount();
+        }
+        return this.broadcastConnectionErrorObservable;
+
+    }
+
+    // Return an Observable containing the error when an error occure
     public error = (): Observable<Frame> => {
 
         // create one and only one broadcast receiver
