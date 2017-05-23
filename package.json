@@ -1,6 +1,6 @@
 {
   "name": "webstomp-obs",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Stomp over websocket using observable",
   "main": "./webstompobs.js",
   "typings": "./types/index.d.ts",
@@ -22,7 +22,6 @@
     "types",
     "src",
     "webstompobs.js",
-    "webstompobs.min.js",
     "*.md",
     "LICENCE"
   ],
@@ -36,6 +35,9 @@
     "url": "https://github.com/fpozzobon/webstomp-obs/issues"
   },
   "homepage": "https://github.com/fpozzobon/webstomp-obs#readme",
+  "dependencies": {
+    "rxjs": "^5.1.1"
+  },
   "devDependencies": {
     "@types/chai": "^3.5.2",
     "@types/es6-shim": "^0.31.33",
@@ -44,7 +46,6 @@
     "chai": "^3.5.0",
     "in-publish": "^2.0.0",
     "mocha": "^3.2.0",
-    "rxjs": "^5.1.1",
     "sinon": "^1.17.6",
     "ts-loader": "^2.0.0",
     "ts-node": "^2.1.0",

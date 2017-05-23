@@ -55,7 +55,7 @@ class WebSocketHandler {
     constructor(createWsConnection: () => IWebSocket, options: WsOptions) {
 
         // cannot have default options object + destructuring in the same time in method signature
-        let {binary = false, heartbeat = {outgoing: 10000, incoming: 10000}, debug = false} = options;
+        let {binary = false, debug = false, heartbeat = {outgoing: 10000, incoming: 10000}} = options;
         this.hasDebug = !!debug;
         this.connected = false;
         // Heartbeat properties of the client
@@ -169,6 +169,7 @@ class WebSocketHandler {
             };
             this.ws.onclose = (ev: any) => {
                 this._debug(`Whoops! Lost connection to ${this.ws.url}:`, ev);
+                this.ws = null;
                 this.onConnectionError && this.onConnectionError()(ev);
                 onDisconnect (ev);
             };
