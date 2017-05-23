@@ -11,7 +11,7 @@ describe ('Stompobservable client', () => {
     let expectedOptions
     let connectCallback
     let disconnectCallback
-    const connectedClientSpy = Sinon.spy(connectedClient, 'ConnectedClient')
+    let connectedClientSpy
     const webSocketHandlerMock = {
         initConnection: (headers: any,
                              onDisconnect: (ev: any) => void) => {
@@ -20,22 +20,28 @@ describe ('Stompobservable client', () => {
                                 },
         disconnect: Sinon.stub()
     }
-    let webSocketHandlerSpy = Sinon.stub(WebSocketHandler, 'default')
-    const initConnectionSpy = Sinon.spy(webSocketHandlerMock, 'initConnection')
+    let webSocketHandlerSpy
+    let initConnectionSpy
 
     beforeEach( () => {
-        webSocketHandlerSpy.returns(webSocketHandlerMock)
+        connectedClientSpy = Sinon.spy(connectedClient, 'ConnectedClient')
+        webSocketHandlerSpy = Sinon.stub(WebSocketHandler, 'default')
+                                   .returns(webSocketHandlerMock)
         expectedCreateWsConnection = Sinon.stub()
+        initConnectionSpy = Sinon.spy(webSocketHandlerMock, 'initConnection')
         expectedOptions = {maxConnectAttempt: 2, ttlConnectAttempt: TTL}
         this.clock = Sinon.useFakeTimers()
     })
 
     afterEach( () => {
         connectedClientSpy.reset()
+        connectedClientSpy.restore()
         webSocketHandlerSpy.reset()
+        webSocketHandlerSpy.restore()
         expectedCreateWsConnection.reset()
         webSocketHandlerMock.disconnect.reset()
         initConnectionSpy.reset()
+        initConnectionSpy.restore()
         this.clock.restore()
     })
 
@@ -52,11 +58,9 @@ describe ('Stompobservable client', () => {
     describe ('connect', () => {
         let testedClient
         const expectedHeaders = Sinon.stub() as any
-        let webSocketHandlerInstance
 
         beforeEach( () => {
             testedClient = new Client(expectedCreateWsConnection, expectedOptions)
-            webSocketHandlerInstance = webSocketHandlerSpy.getCall(0).returnValue
         })
 
         it ('should create an Observable', () => {

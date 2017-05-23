@@ -131,7 +131,6 @@ describe ('Stompobservable connectedClient', () => {
             const expectedHeaders = Sinon.stub()
             client.ack(expectedMessageID, expectedSubscription, expectedHeaders)
 
-            const actualParams = mockedWebSocketHandlerSpy.ack.getCall(0).args
             Sinon.assert.calledOnce(mockedWebSocketHandlerSpy.ack)
             Sinon.assert.calledWith(mockedWebSocketHandlerSpy.ack, expectedMessageID, expectedSubscription, expectedHeaders)
         })
@@ -153,7 +152,6 @@ describe ('Stompobservable connectedClient', () => {
             const expectedHeaders = Sinon.stub()
             client.nack(expectedMessageID, expectedSubscription, expectedHeaders)
 
-            const actualParams = mockedWebSocketHandlerSpy.nack.getCall(0).args
             Sinon.assert.calledOnce(mockedWebSocketHandlerSpy.nack)
             Sinon.assert.calledWith(mockedWebSocketHandlerSpy.nack, expectedMessageID, expectedSubscription, expectedHeaders)
         })

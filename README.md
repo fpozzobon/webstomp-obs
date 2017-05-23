@@ -190,18 +190,22 @@ var subscription = source.subscribe(
 
 ```
 
-### receipt(): Observable<any>;
+### receipt(): Observable<Frame>;
 
 Will give back an Observable to subscribe to get the receipt event.
 
-### error(): Observable<any>;
+### connectionError(): Observable<any>;
+
+Will give back an Observable to subscribe to get the connection errors.
+
+### error(): Observable<Frame>;
 
 Will give back an Observable to subscribe to get the error event.
 
-### subscribe(destination: string, headers?: SubscribeHeaders): Observable<any>;
+### subscribe(destination: string, headers?: SubscribeHeaders): Observable<Frame>;
 
 Initialise an UNIQUE subscription with the websocket on a destination (usefull for the queue for example)
-To unsubscribe to the destination, you call call subscription.unsubscribe()
+To unsubscribe to the destination, you can call subscription.unsubscribe()
 
 ```js
 
@@ -222,7 +226,7 @@ var subscription = source.subscribe(
 ```
 
 
-### subscribeBroadcast(destination: string, headers?: SubscribeHeaders): Observable<any>;
+### subscribeBroadcast(destination: string, headers?: SubscribeHeaders): Observable<Frame>;
 
 Initialise a BROADCAST subscription with the websocket per destination (usefull for the topic for example),
 by using this, if you subscribes multiple times to the same destination using the same connected client,

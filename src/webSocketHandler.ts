@@ -55,7 +55,7 @@ class WebSocketHandler {
     constructor(createWsConnection: () => IWebSocket, options: WsOptions) {
 
         // cannot have default options object + destructuring in the same time in method signature
-        let {binary = false, heartbeat = {outgoing: 10000, incoming: 10000}, debug = true} = options;
+        let {binary = false, heartbeat = {outgoing: 10000, incoming: 10000}, debug = false} = options;
         this.hasDebug = !!debug;
         this.connected = false;
         // Heartbeat properties of the client
@@ -80,8 +80,13 @@ class WebSocketHandler {
                     ): Observable<void> => {
 
         return Observable.create((observer: Observer<void>) => {
-
-            this.ws = this.createWS()
+            if (this.ws) {
+                throw 'Error, the connection has already been created !'
+            }
+            this.ws = this.createWS();
+            if (!this.ws) {
+                throw 'Error, createWsConnection function returned null !'
+            }
             this.ws.binaryType = 'arraybuffer';
 
             this._debug('Opening Web Socket...');
@@ -93,10 +98,10 @@ class WebSocketHandler {
                 this.serverActivity = Date.now();
                 // heartbeat
                 if (data === BYTES.LF) {
-                    this._debug('<<< PONG');
+                    this._debug(`<<< PONG`);
                     return;
                 }
-                this._debug('<<< ${data}');
+                this._debug(`<<< ${data}`);
                 // Handle STOMP frames received from the server
                 // The unmarshall function returns the frames parsed and any remaining
                 // data from partial frames.
@@ -106,7 +111,7 @@ class WebSocketHandler {
                     switch (frame.command) {
                         // [CONNECTED Frame](http://stomp.github.com/stomp-specification-1.1.html#CONNECTED_Frame)
                         case 'CONNECTED':
-                            this._debug('connected to server ${frame.headers.server}');
+                            this._debug(`connected to server ${frame.headers.server}`);
                             this.connected = true;
                             this.version = frame.headers.version;
                             this._setupHeartbeat(this.ws, frame.headers);
@@ -136,7 +141,7 @@ class WebSocketHandler {
                                 frame.nack = this.nack.bind(this, messageID, subscription);
                                 onreceive(frame);
                             } else {
-                                this._debug('Unhandled received MESSAGE: ${frame}');
+                                this._debug(`Unhandled received MESSAGE: ${frame}`);
                             }
 
                             break;
@@ -158,12 +163,12 @@ class WebSocketHandler {
                             if(this.onErrorReceived) this.onErrorReceived()(frame)
                             break;
                         default:
-                            this._debug('Unhandled frame: ${frame}');
+                            this._debug(`Unhandled frame: ${frame}`);
                     }
                 });
             };
             this.ws.onclose = (ev: any) => {
-                this._debug('Whoops! Lost connection to ${this.ws.url}:', ev);
+                this._debug(`Whoops! Lost connection to ${this.ws.url}:`, ev);
                 this.onConnectionError && this.onConnectionError()(ev);
                 onDisconnect (ev);
             };
@@ -196,21 +201,21 @@ class WebSocketHandler {
 
         if (!(this.heartbeat.outgoing === 0 || serverIncoming === 0)) {
             let ttl = Math.max(this.heartbeat.outgoing, serverIncoming);
-            this._debug('send PING every ${ttl}ms');
+            this._debug(`send PING every ${ttl}ms`);
             this.pinger = setInterval(() => {
-                this._wsSend(BYTES.LF);
+                this._wsSend(ws, BYTES.LF);
                 this._debug('>>> PING');
             }, ttl);
         }
 
         if (!(this.heartbeat.incoming === 0 || serverOutgoing === 0)) {
             let ttl = Math.max(this.heartbeat.incoming, serverOutgoing);
-            this._debug('check PONG every ${ttl}ms');
+            this._debug(`check PONG every ${ttl}ms`);
             this.ponger = setInterval(() => {
                 let delta = Date.now() - this.serverActivity;
                 // We wait twice the TTL to be flexible on window's setInterval calls
                 if (delta > ttl * 2) {
-                    this._debug('did not receive server activity for the last ${delta}ms');
+                    this._debug(`did not receive server activity for the last ${delta}ms`);
                     ws.close();
                 }
             }, ttl);
@@ -240,7 +245,7 @@ class WebSocketHandler {
     // [BEGIN Frame](http://stomp.github.com/stomp-specification-1.1.html#BEGIN)
     //
     // If no transaction ID is passed, one will be created automatically
-    public begin = (transaction: any = 'tx-${this.counter++}') => {
+    public begin = (transaction: any = `tx-${this.counter++}`) => {
         this._transmit('BEGIN', {transaction});
         return {
             id: transaction,
@@ -348,23 +353,26 @@ class WebSocketHandler {
 
     // Base method to transmit any stomp frame
     private _transmit = (command: string, headers?: any, body?: any) => {
+        if (!this.ws) {
+            throw 'Error, this.ws is null ! Possibly initConnection has not been called or not subscribed !';
+        }
         let out = Frame.marshall(command, headers, body);
-        this._debug('>>> ${out}');
-        this._wsSend(out);
+        this._debug(`>>> ${out}`);
+        this._wsSend(this.ws, out);
     }
 
-    private _wsSend = (data: any) => {
+    private _wsSend = (ws: IWebSocket, data: any) => {
         if (this.isBinary) data = unicodeStringToTypedArray(data);
-        this._debug('>>> length ${data.length}');
+        this._debug(`>>> length ${data.length}`);
         // if necessary, split the *STOMP* frame to send it on many smaller
         // *IWebSocket* frames
         while (true) {
             if (data.length > this.maxWebSocketFrameSize) {
-                this.ws.send(data.slice(0, this.maxWebSocketFrameSize));
+                ws.send(data.slice(0, this.maxWebSocketFrameSize));
                 data = data.slice(this.maxWebSocketFrameSize);
-                this._debug('remaining = ${data.length}');
+                this._debug(`remaining = ${data.length}`);
             } else {
-                return this.ws.send(data);
+                return ws.send(data);
             }
         }
     }
