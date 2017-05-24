@@ -4,24 +4,37 @@ import { Observable } from 'rxjs/Observable'
 import WebSocketHandler from '../src/webSocketHandler'
 import { BYTES, unicodeStringToTypedArray } from '../src/utils'
 import Frame from '../src/frame'
+import * as Heartbeat from '../src/heartbeat';
 
 describe ('Stompobservable WebSocketHandler', () => {
 
     let tested: WebSocketHandler
-    let createWsConnectionSpy
+    let createWsConnectionStub
     let wsStub
+    let createHeartbeatStub
+    const heartbeatMock = {
+        startHeartbeat: Sinon.stub(),
+        stopHeartbeat: Sinon.stub(),
+        activityFromServer: Sinon.stub()
+    }
     let options
 
     beforeEach ( () => {
         wsStub = Sinon.stub()
-        createWsConnectionSpy = Sinon.stub().returns(wsStub)
+        createWsConnectionStub = Sinon.stub().returns(wsStub)
+        createHeartbeatStub = Sinon.stub(Heartbeat, 'default').returns(heartbeatMock)
         options = Sinon.stub()
-        tested = new WebSocketHandler(createWsConnectionSpy, options)
+        tested = new WebSocketHandler(createWsConnectionStub, options)
     })
 
     afterEach ( () => {
         wsStub.reset()
-        createWsConnectionSpy.reset()
+        createWsConnectionStub.reset()
+        heartbeatMock.startHeartbeat.reset()
+        heartbeatMock.stopHeartbeat.reset()
+        heartbeatMock.activityFromServer.reset()
+        createHeartbeatStub.reset()
+        createHeartbeatStub.restore()
         options.reset()
     })
 
@@ -70,8 +83,8 @@ describe ('Stompobservable WebSocketHandler', () => {
                 msgCompleteSpy.reset()
             })
 
-            it ('should call createWsConnectionSpy', () => {
-                Sinon.assert.calledOnce(createWsConnectionSpy)
+            it ('should call createWsConnectionStub', () => {
+                Sinon.assert.calledOnce(createWsConnectionStub)
             })
 
             it ('should set ws.binaryType to arraybuffer', () => {
@@ -90,19 +103,71 @@ describe ('Stompobservable WebSocketHandler', () => {
                 expect(wsStub.onopen).to.be.instanceof(Function)
             })
 
+            it ('when receiving a message should call heartbeatMock.activityFromServer', () => {
+                wsStub.onmessage({data: 'whatever message'})
+                Sinon.assert.calledOnce(heartbeatMock.activityFromServer)
+            })
+
             describe ('when CONNECTED received', () => {
 
+                const expectedVersion = '1.2'
+                const expectedHeartBeat = '100,1000'
+
                 const CONNECTED_MSG = 'CONNECTED' + BYTES.LF +
-                                      'version:1.2' + BYTES.LF +
-                                      'heart-beat:0,0' + BYTES.LF + BYTES.LF +
+                                      'version:' + expectedVersion + BYTES.LF +
+                                      'heart-beat:' + expectedHeartBeat + BYTES.LF + BYTES.LF +
                                       BYTES.NULL
 
+                let sendStub
                 beforeEach ( () => {
+                    sendStub = Sinon.stub(tested, '_wsSend')
+                    wsStub.close = Sinon.stub()
                     wsStub.onmessage({data: CONNECTED_MSG})
+                })
+
+                afterEach ( () => {
+                    sendStub.reset()
+                    sendStub.restore()
+                    wsStub.close.reset()
                 })
 
                 it ('should call observer.next', () => {
                     Sinon.assert.calledOnce(msgReceivedSpy)
+                })
+
+                describe ('heartbeatMock.startHeartbeat', () => {
+
+                    let callbackParams
+
+                    beforeEach ( () => {
+                        callbackParams = heartbeatMock.startHeartbeat.getCall(0).args[1]
+                    })
+                    
+                    it ('should be called', () => {
+                        Sinon.assert.calledOnce(heartbeatMock.startHeartbeat)
+                    })
+
+                    it ('should contain headers', () => {
+                        Sinon.assert.calledWith(heartbeatMock.startHeartbeat,
+                                                { "heart-beat": expectedHeartBeat, version: expectedVersion })
+                    })
+
+                    it ('should contain a send callback', () => {
+                        const { send } = callbackParams;
+                        const expectedData = 'A data';
+                        send(expectedData);
+                        
+                        Sinon.assert.calledOnce(sendStub)
+                        Sinon.assert.calledWith(sendStub, wsStub, expectedData)
+                    })
+
+                    it ('should contain a close callback', () => {
+                        const { close } = callbackParams;
+                        close();
+                        
+                        Sinon.assert.calledOnce(wsStub.close)
+                    })
+
                 })
             })
 
@@ -267,6 +332,10 @@ describe ('Stompobservable WebSocketHandler', () => {
                     Sinon.assert.calledOnce(onDisconnectedSpy)
                     Sinon.assert.calledWith(onDisconnectedSpy, fakeEvt)
                 })
+                
+                it ('should call heartbeatMock.stopHeartbeat', () => {
+                    Sinon.assert.calledOnce(heartbeatMock.stopHeartbeat)
+                })
             })
         
             describe ('when unsubscribe', () => {
@@ -409,6 +478,10 @@ describe ('Stompobservable WebSocketHandler', () => {
 
                     it('should call ws.close', () => {
                         Sinon.assert.calledOnce(wsStub.close)
+                    })
+                    
+                    it ('should call heartbeatMock.stopHeartbeat', () => {
+                        Sinon.assert.calledOnce(heartbeatMock.stopHeartbeat)
                     })
 
                 })

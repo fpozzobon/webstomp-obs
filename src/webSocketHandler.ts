@@ -1,18 +1,15 @@
+import { Observable } from 'rxjs/Observable';
+import { Observer } from 'rxjs/Observer';
+
 import Frame from './frame';
 import { IWebSocket } from './client';
 import { VERSIONS, BYTES, typedArrayToUnicodeString, unicodeStringToTypedArray } from './utils';
-import { Observable } from 'rxjs/Observable';
-import { Observer } from 'rxjs/Observer';
+import Heartbeat, { HeartbeatOptions } from './heartbeat';
 
 
 export interface Subscription {
     id: string;
     unsubscribe: () => void;
-}
-
-export interface Heartbeat {
-    outgoing: number,
-    incoming: number
 }
 
 export interface IEvent {
@@ -21,7 +18,7 @@ export interface IEvent {
 
 export interface WsOptions {
     binary: boolean;
-    heartbeat: Heartbeat | boolean;
+    heartbeat: HeartbeatOptions | boolean;
     debug: boolean;
 
 }
@@ -38,14 +35,13 @@ class WebSocketHandler {
     private counter: number
     private connected: boolean
     private maxWebSocketFrameSize: number
-    private serverActivity: number
     private partialData: string
-    private heartbeat: Heartbeat
     private createWS: Function
 
     private version: any
-    private pinger: any
-    private ponger: any
+
+    private heartbeatSettings: HeartbeatOptions
+    private heartbeat: Heartbeat
 
     public onMessageReceived: (subscription: string) => (Frame) => void
     public onMessageReceipted: () => (Frame) => void
@@ -62,7 +58,9 @@ class WebSocketHandler {
         // outgoing: send heartbeat every 10s by default (value is in ms)
         // incoming: expect to receive server heartbeat at least every 10s by default
         // falsy value means no heartbeat hence 0,0
-        this.heartbeat = (heartbeat as Heartbeat) || {outgoing: 0, incoming: 0};
+        this.heartbeatSettings = (heartbeat as HeartbeatOptions) || {outgoing: 0, incoming: 0};
+        this.heartbeat = new Heartbeat(this.heartbeatSettings, this._debug);
+
         this.partialData = '';
         this.createWS = createWsConnection;
 
@@ -73,6 +71,7 @@ class WebSocketHandler {
         // is bigger than this value, the STOMP frame will be sent using multiple
         // IWebSocket frames (default is 16KiB)
         this.maxWebSocketFrameSize = 16 * 1024;
+
     }
 
     public initConnection = (headers: any,
@@ -95,7 +94,7 @@ class WebSocketHandler {
                 if (evt.data instanceof ArrayBuffer) {
                     data = typedArrayToUnicodeString(new Uint8Array(evt.data));
                 }
-                this.serverActivity = Date.now();
+                this.heartbeat.activityFromServer();
                 // heartbeat
                 if (data === BYTES.LF) {
                     this._debug(`<<< PONG`);
@@ -114,8 +113,8 @@ class WebSocketHandler {
                             this._debug(`connected to server ${frame.headers.server}`);
                             this.connected = true;
                             this.version = frame.headers.version;
+                            observer.next(null);
                             this._setupHeartbeat(this.ws, frame.headers);
-                            observer.next(null)
                             break;
                         // [MESSAGE Frame](http://stomp.github.com/stomp-specification-1.1.html#MESSAGE)
                         case 'MESSAGE':
@@ -169,6 +168,7 @@ class WebSocketHandler {
             };
             this.ws.onclose = (ev: any) => {
                 this._debug(`Whoops! Lost connection to ${this.ws.url}:`, ev);
+                this.heartbeat.stopHeartbeat();
                 this.ws = null;
                 this.onConnectionError && this.onConnectionError()(ev);
                 onDisconnect (ev);
@@ -178,7 +178,7 @@ class WebSocketHandler {
                 headers['accept-version'] = VERSIONS.supportedVersions();
                 // Check if we already have heart-beat in headers before adding them
                 if (!headers['heart-beat']) {
-                    headers['heart-beat'] = [this.heartbeat.outgoing, this.heartbeat.incoming].join(',');
+                    headers['heart-beat'] = [this.heartbeatSettings.outgoing, this.heartbeatSettings.incoming].join(',');
                 }
                 this._transmit('CONNECT', headers);
             };
@@ -193,40 +193,14 @@ class WebSocketHandler {
 
     // Heart-beat negotiation
     private _setupHeartbeat = (ws: IWebSocket, headers: any) => {
-        if (this.version !== VERSIONS.V1_1 && this.version !== VERSIONS.V1_2) return;
-
-        // heart-beat header received from the server looks like:
-        //
-        //     heart-beat: sx, sy
-        const [serverOutgoing, serverIncoming] = (headers['heart-beat'] || '0,0').split(',').map((v: string) => parseInt(v, 10));
-
-        if (!(this.heartbeat.outgoing === 0 || serverIncoming === 0)) {
-            let ttl = Math.max(this.heartbeat.outgoing, serverIncoming);
-            this._debug(`send PING every ${ttl}ms`);
-            this.pinger = setInterval(() => {
-                this._wsSend(ws, BYTES.LF);
-                this._debug('>>> PING');
-            }, ttl);
-        }
-
-        if (!(this.heartbeat.incoming === 0 || serverOutgoing === 0)) {
-            let ttl = Math.max(this.heartbeat.incoming, serverOutgoing);
-            this._debug(`check PONG every ${ttl}ms`);
-            this.ponger = setInterval(() => {
-                let delta = Date.now() - this.serverActivity;
-                // We wait twice the TTL to be flexible on window's setInterval calls
-                if (delta > ttl * 2) {
-                    this._debug(`did not receive server activity for the last ${delta}ms`);
-                    ws.close();
-                }
-            }, ttl);
-        }
+        const send = (data: any) => this._wsSend(ws, data);
+        this.heartbeat.startHeartbeat(headers,
+                                      { send, close: ws.close});
     }
 
     // [DISCONNECT Frame](http://stomp.github.com/stomp-specification-1.1.html#DISCONNECT)
     public disconnect = (headers: any = {}) => {
-        clearInterval(this.pinger);
-        clearInterval(this.ponger);
+        this.heartbeat.stopHeartbeat();
         this.connected = false;
         if (this.ws) {
             this.ws.onclose = null;
@@ -299,9 +273,7 @@ class WebSocketHandler {
     //       {'ack': 'client'}
     //     );
     public ack = (messageID: string, subscription: string, headers: any = {}) => {
-        // 1.2 change id header name from message-id to id
-        var idAttr = this.version === VERSIONS.V1_2 ? 'id' : 'message-id';
-        headers[idAttr] = messageID;
+        headers[this._getIdAttr()] = messageID;
         headers.subscription = subscription;
         this._transmit('ACK', headers);
     }
@@ -323,10 +295,13 @@ class WebSocketHandler {
     //     );
     public nack = (messageID: string, subscription: string, headers: any = {}) => {
         // 1.2 change id header name from message-id to id
-        var idAttr = this.version === VERSIONS.V1_2 ? 'id' : 'message-id';
-        headers[idAttr] = messageID;
+        headers[this._getIdAttr()] = messageID;
         headers.subscription = subscription;
         this._transmit('NACK', headers);
+    }
+
+    private _getIdAttr = (): string => {
+        return this.version === VERSIONS.V1_2 ? 'id' : 'message-id';
     }
 
     // [SUBSCRIBE Frame](http://stomp.github.com/stomp-specification-1.1.html#SUBSCRIBE)

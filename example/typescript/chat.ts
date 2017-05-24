@@ -17,7 +17,7 @@ export class Chat {
   }
 
   private connect = (url: string, login: string, password: string) : void => {
-    this.wsClient = stompobservable.client(url)
+    this.wsClient = stompobservable.client(url, {debug: true} as any)
     this.sourceConnection = this.wsClient.connect({login: login, passcode: password})
   }
 
@@ -36,10 +36,11 @@ export class Chat {
     this.onConnect(
       (connectedClient: ConnectedClient) => {
         connectedClient
-          .subscribeBroadcast(this.topic)
+          .subscribeBroadcast(this.topic, {ack: 'client'})
           .subscribe(
               function (message) {
                   onMessageFn(message)
+                  message.ack()
               },
               function (err) {
                   onError && onError(err)

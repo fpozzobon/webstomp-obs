@@ -52,8 +52,10 @@ export interface UnsubscribeHeaders extends StandardHeaders {
     id?: string,
 }
 
+export type ACK = 'auto' | 'client' | 'client-individual';
+
 export interface SubscribeHeaders extends UnsubscribeHeaders {
-    ack?: string,
+    ack?: ACK,
     destination?: string
 }
 
@@ -211,19 +213,20 @@ export class ConnectedClient {
 
     // subscribe to a destination
     // return an Observable which you can unsubscribe
-    public subscribe = (destination: string, headers: SubscribeHeaders = {}): Observable<Frame> => {
+    public subscribe = (destination: string, headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
 
         return Observable.create((observer: Observer<Frame>) => {
+            const currentHeader: SubscribeHeaders = {...headers};
             // for convenience if the `id` header is not set, we create a new one for this client
             // that will be returned to be able to unsubscribe this subscription
-            if (!headers.id) headers.id = 'sub-' + this.counter++;
-            headers.destination = destination;
-            this.subscriptions[headers.id] = observer;
+            if (!currentHeader.id) currentHeader.id = 'sub-' + this.counter++;
+            currentHeader.destination = destination;
+            this.subscriptions[currentHeader.id] = observer;
 
-            this.webSocketClient.subscribe(headers);
+            this.webSocketClient.subscribe(currentHeader);
             return () => {
-                this.webSocketClient.unSubscribe(headers);
-                delete this.subscriptions[headers.id];
+                this.webSocketClient.unSubscribe(currentHeader);
+                delete this.subscriptions[currentHeader.id];
             };
         })
 
@@ -231,7 +234,7 @@ export class ConnectedClient {
 
     // subscribe to a destination only once for multiple subscribers
     // return an Observable which you can unsubscribe
-    public subscribeBroadcast = (destination: string, headers: SubscribeHeaders = {}): Observable<Frame> => {
+    public subscribeBroadcast = (destination: string, headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
         // create one and only one dedicated observable per destination
         if (!this.broadcastSubscribers[destination]) {
             const connectedSubscribe: ConnectableObservable<Frame> = this.subscribe(destination, headers)
