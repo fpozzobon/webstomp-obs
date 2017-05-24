@@ -3,6 +3,9 @@ import { Observer } from 'rxjs/Observer';
 
 import Frame from './frame';
 import { IWebSocket } from './client';
+import { AckHeaders, NackHeaders,
+         ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
+         SubscribeHeaders, UnsubscribeHeaders } from './headers';
 import { VERSIONS, BYTES, typedArrayToUnicodeString, unicodeStringToTypedArray } from './utils';
 import Heartbeat, { HeartbeatOptions } from './heartbeat';
 
@@ -46,7 +49,7 @@ class WebSocketHandler {
     public onMessageReceived: (subscription: string) => (Frame) => void
     public onMessageReceipted: () => (Frame) => void
     public onErrorReceived: () => (Frame) => void
-    public onConnectionError: () => (ev: any) => void
+    public onConnectionError: () => (ev: CloseEvent) => void
 
     constructor(createWsConnection: () => IWebSocket, options: WsOptions) {
 
@@ -74,7 +77,7 @@ class WebSocketHandler {
 
     }
 
-    public initConnection = (headers: any,
+    public initConnection = (headers: ConnectionHeaders,
                     onDisconnect: (ev: any) => void
                     ): Observable<void> => {
 
@@ -166,7 +169,7 @@ class WebSocketHandler {
                     }
                 });
             };
-            this.ws.onclose = (ev: any) => {
+            this.ws.onclose = (ev: CloseEvent) => {
                 this._debug(`Whoops! Lost connection to ${this.ws.url}:`, ev);
                 this.heartbeat.stopHeartbeat();
                 this.ws = null;
@@ -192,14 +195,14 @@ class WebSocketHandler {
     }
 
     // Heart-beat negotiation
-    private _setupHeartbeat = (ws: IWebSocket, headers: any) => {
+    private _setupHeartbeat = (ws: IWebSocket, headers: ConnectedHeaders) => {
         const send = (data: any) => this._wsSend(ws, data);
         this.heartbeat.startHeartbeat(headers,
                                       { send, close: ws.close});
     }
 
     // [DISCONNECT Frame](http://stomp.github.com/stomp-specification-1.1.html#DISCONNECT)
-    public disconnect = (headers: any = {}) => {
+    public disconnect = (headers: DisconnectHeaders = {}) => {
         this.heartbeat.stopHeartbeat();
         this.connected = false;
         if (this.ws) {
@@ -239,7 +242,7 @@ class WebSocketHandler {
     //     var tx = client.begin(txid);
     //     ...
     //     tx.commit();
-    public commit = (transaction: any) => {
+    public commit = (transaction: string) => {
         this._transmit('COMMIT', {transaction});
     }
 
@@ -253,7 +256,7 @@ class WebSocketHandler {
     //     var tx = client.begin(txid);
     //     ...
     //     tx.abort();
-    public abort = (transaction: any) => {
+    public abort = (transaction: string) => {
         this._transmit('ABORT', {transaction});
     }
 
@@ -272,10 +275,11 @@ class WebSocketHandler {
     //       },
     //       {'ack': 'client'}
     //     );
-    public ack = (messageID: string, subscription: string, headers: any = {}) => {
-        headers[this._getIdAttr()] = messageID;
-        headers.subscription = subscription;
-        this._transmit('ACK', headers);
+    public ack = (messageID: string, subscription: string, headers?: AckHeaders) => {
+        const currentHeader: any = {...headers}
+        currentHeader[this._getIdAttr()] = messageID;
+        currentHeader.subscription = subscription;
+        this._transmit('ACK', currentHeader);
     }
 
     // [NACK Frame](http://stomp.github.com/stomp-specification-1.1.html#NACK)
@@ -293,11 +297,11 @@ class WebSocketHandler {
     //       },
     //       {'ack': 'client'}
     //     );
-    public nack = (messageID: string, subscription: string, headers: any = {}) => {
-        // 1.2 change id header name from message-id to id
-        headers[this._getIdAttr()] = messageID;
-        headers.subscription = subscription;
-        this._transmit('NACK', headers);
+    public nack = (messageID: string, subscription: string, headers?: NackHeaders) => {
+        const currentHeader: any = {...headers}
+        currentHeader[this._getIdAttr()] = messageID;
+        currentHeader.subscription = subscription;
+        this._transmit('NACK', currentHeader);
     }
 
     private _getIdAttr = (): string => {
@@ -305,7 +309,7 @@ class WebSocketHandler {
     }
 
     // [SUBSCRIBE Frame](http://stomp.github.com/stomp-specification-1.1.html#SUBSCRIBE)
-    public subscribe = ( headers: any = {}) => {
+    public subscribe = ( headers: SubscribeHeaders) => {
         this._transmit('SUBSCRIBE', headers);
         return {
             id: headers.id,
@@ -323,7 +327,7 @@ class WebSocketHandler {
     //     var subscription = client.subscribe(destination, onmessage);
     //     ...
     //     subscription.unsubscribe(headers);
-    public unSubscribe = (headers: any = {}) => {
+    public unSubscribe = (headers: UnsubscribeHeaders) => {
         this._transmit('UNSUBSCRIBE', headers);
     }
 

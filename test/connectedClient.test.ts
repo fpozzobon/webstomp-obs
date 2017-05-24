@@ -7,6 +7,7 @@ import { Observable } from 'rxjs/Observable'
 describe ('Stompobservable connectedClient', () => {
     let client: ConnectedClient
     let mockedWebSocketHandlerSpy
+    const fakeTransaction = 'A transaction'
 
     beforeEach( () => {
         mockedWebSocketHandlerSpy = Sinon.mock()
@@ -41,12 +42,11 @@ describe ('Stompobservable connectedClient', () => {
 
         it ('should call webSocketClient.send with the expected header with destination inside', () => {
             const expectedDestination = "A destination"
-            const expectedHeaders = Sinon.stub()
-            client.send(expectedDestination, "A body", expectedHeaders)
+            client.send(expectedDestination, "A body")
 
             const actualParams = mockedWebSocketHandlerSpy.send.getCall(0).args
             Sinon.assert.calledOnce(mockedWebSocketHandlerSpy.send)
-            expect(actualParams[0]).to.eql({...expectedHeaders, 'destination': expectedDestination})
+            expect(actualParams[0]).to.eql({destination: expectedDestination})
 
         })
         
@@ -69,11 +69,10 @@ describe ('Stompobservable connectedClient', () => {
         })
 
         it ('should call webSocketClient.begin with the right parameters', () => {
-            const expectedTransaction = Sinon.stub()
-            client.begin(expectedTransaction)
+            client.begin(fakeTransaction)
 
             Sinon.assert.calledOnce(mockedWebSocketHandlerSpy.begin)
-            Sinon.assert.calledWith(mockedWebSocketHandlerSpy.begin, expectedTransaction)
+            Sinon.assert.calledWith(mockedWebSocketHandlerSpy.begin, fakeTransaction)
         })
     })
 
@@ -88,11 +87,10 @@ describe ('Stompobservable connectedClient', () => {
         })
 
         it ('should call webSocketClient.commit with transaction', () => {
-            const expectedTransaction = Sinon.stub()
-            client.commit(expectedTransaction)
+            client.commit(fakeTransaction)
 
             Sinon.assert.calledOnce(mockedWebSocketHandlerSpy.commit)
-            Sinon.assert.calledWith(mockedWebSocketHandlerSpy.commit, expectedTransaction)
+            Sinon.assert.calledWith(mockedWebSocketHandlerSpy.commit, fakeTransaction)
         })
     })
     
@@ -107,11 +105,10 @@ describe ('Stompobservable connectedClient', () => {
         })
 
         it ('should call webSocketClient.abort with transaction', () => {
-            const expectedTransaction = Sinon.stub()
-            client.abort(expectedTransaction)
+            client.abort(fakeTransaction)
 
             Sinon.assert.calledOnce(mockedWebSocketHandlerSpy.abort)
-            Sinon.assert.calledWith(mockedWebSocketHandlerSpy.abort, expectedTransaction)
+            Sinon.assert.calledWith(mockedWebSocketHandlerSpy.abort, fakeTransaction)
         })
     })
     
@@ -128,11 +125,10 @@ describe ('Stompobservable connectedClient', () => {
         it ('should call webSocketClient.ack with transaction', () => {
             const expectedMessageID = "A message Id"
             const expectedSubscription = "A Subscription"
-            const expectedHeaders = Sinon.stub()
-            client.ack(expectedMessageID, expectedSubscription, expectedHeaders)
+            client.ack(expectedMessageID, expectedSubscription)
 
             Sinon.assert.calledOnce(mockedWebSocketHandlerSpy.ack)
-            Sinon.assert.calledWith(mockedWebSocketHandlerSpy.ack, expectedMessageID, expectedSubscription, expectedHeaders)
+            Sinon.assert.calledWith(mockedWebSocketHandlerSpy.ack, expectedMessageID, expectedSubscription)
         })
     })
 
@@ -149,11 +145,10 @@ describe ('Stompobservable connectedClient', () => {
         it ('should call webSocketHandler.nack with transaction', () => {
             const expectedMessageID = "A message Id"
             const expectedSubscription = "A Subscription"
-            const expectedHeaders = Sinon.stub()
-            client.nack(expectedMessageID, expectedSubscription, expectedHeaders)
+            client.nack(expectedMessageID, expectedSubscription)
 
             Sinon.assert.calledOnce(mockedWebSocketHandlerSpy.nack)
-            Sinon.assert.calledWith(mockedWebSocketHandlerSpy.nack, expectedMessageID, expectedSubscription, expectedHeaders)
+            Sinon.assert.calledWith(mockedWebSocketHandlerSpy.nack, expectedMessageID, expectedSubscription)
         })
     })
 

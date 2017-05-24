@@ -41,8 +41,8 @@ describe ('Stompobservable WebSocketHandler', () => {
     describe ('initConnection', () => {
 
         let actualConnectionObservable
-        const mockedHeaders = {test: 1}
-        const expectedHeaders = { 'accept-version': "1.2,1.1,1.0", 'heart-beat': "10000,10000", ...mockedHeaders}
+        const mockedHeaders = {host: 'an host', 'accept-version': '1.2,1.1,1.0', login: 'a login'}
+        const expectedHeaders = { 'heart-beat': "10000,10000", ...mockedHeaders}
         let onDisconnectedSpy = Sinon.spy()
 
         beforeEach ( () => {
@@ -525,18 +525,17 @@ describe ('Stompobservable WebSocketHandler', () => {
 
                     const messageID = 'An id'
                     const subscription = 'A subscription'
-                    const headers = {testHeader: 1}
-                    const expectedParam = {...headers, 'message-id': messageID, subscription}
+                    const expectedParam = {'message-id': messageID, subscription}
 
                     it('ack should call tested._transmit', () => {
-                        tested.ack(messageID, subscription, headers)
+                        tested.ack(messageID, subscription)
 
                         Sinon.assert.calledOnce(transmitStub)
                         Sinon.assert.calledWith(transmitStub, 'ACK', expectedParam)
                     })
 
                     it('nack should call tested._transmit', () => {
-                        tested.nack(messageID, subscription, headers)
+                        tested.nack(messageID, subscription)
 
                         Sinon.assert.calledOnce(transmitStub)
                         Sinon.assert.calledWith(transmitStub, 'NACK', expectedParam)
@@ -605,30 +604,25 @@ describe ('Stompobservable WebSocketHandler', () => {
 
                 describe ('subscribe', () => {
 
-                    it('should call tested._transmit', () => {
-                        tested.subscribe()
-
-                        Sinon.assert.calledOnce(transmitStub)
-                        Sinon.assert.calledWith(transmitStub, 'SUBSCRIBE', {})
-                    })
+                    const subscribeHeader = { destination: 'A destination', id: '123'}
 
                     it('should call tested._transmit with transaction', () => {
-                        tested.subscribe(mockedHeaders)
+                        tested.subscribe(subscribeHeader)
 
                         Sinon.assert.calledOnce(transmitStub)
-                        Sinon.assert.calledWith(transmitStub, 'SUBSCRIBE', mockedHeaders)
+                        Sinon.assert.calledWith(transmitStub, 'SUBSCRIBE', subscribeHeader)
                     })
 
                     describe ('should give back', () => {
 
-                        const expectedId = 123
+                        const expectedId = '123'
                         let actual
                         let unSubscribeStub
 
                         beforeEach ( () => {
                             unSubscribeStub = Sinon.stub(tested, 'unSubscribe')
 
-                            actual = tested.subscribe({id: expectedId})
+                            actual = tested.subscribe(subscribeHeader)
                         })
 
                         afterEach ( () => {
@@ -654,10 +648,11 @@ describe ('Stompobservable WebSocketHandler', () => {
                 describe ('unSubscribe', () => {
 
                     it('should call tested._transmit', () => {
-                        tested.unSubscribe(mockedHeaders)
+                        const unsubscribeHeader = {id: '123'}
+                        tested.unSubscribe(unsubscribeHeader)
 
                         Sinon.assert.calledOnce(transmitStub)
-                        Sinon.assert.calledWith(transmitStub, 'UNSUBSCRIBE', mockedHeaders)
+                        Sinon.assert.calledWith(transmitStub, 'UNSUBSCRIBE', unsubscribeHeader)
                     })
 
                 })

@@ -1,4 +1,5 @@
 import { IWebSocket } from './client';
+import { ConnectedHeaders } from './headers';
 import { VERSIONS, BYTES } from './utils';
 
 export interface HeartbeatOptions {
@@ -22,7 +23,7 @@ class Heartbeat {
     }
 
     // Heart-beat negotiation
-    public startHeartbeat = ( headers: any,
+    public startHeartbeat = ( headers: ConnectedHeaders,
                               callback: { send: (data: any) => any,
                                           close: Function}) => {
         this.stopHeartbeat();

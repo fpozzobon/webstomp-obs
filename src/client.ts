@@ -1,4 +1,5 @@
-import {ConnectedClient, ConnectionHeaders} from './connectedClient';
+import { ConnectedClient } from './connectedClient';
+import { ConnectionHeaders } from './headers';
 import WebSocketHandler from './webSocketHandler';
 import { Observer } from 'rxjs/Observer';
 import { Observable } from 'rxjs/Observable';
@@ -34,7 +35,7 @@ class Client {
     private wsHandler: WebSocketHandler
     private observableConnection: Observable<ConnectedClient>
     private nbConnectAttempt: number
-    private connectTimeout: any
+    private connectTimeout: number
     private maxConnectAttempt: number
     private ttlConnectAttempt: number
     private isConnected: boolean
@@ -77,7 +78,7 @@ class Client {
 
     }
 
-    private __initConnectedClient = (headers: any,
+    private __initConnectedClient = (headers: ConnectionHeaders,
                           currentObserver: Observer<ConnectedClient>) => {
 
         clearTimeout(this.connectTimeout)

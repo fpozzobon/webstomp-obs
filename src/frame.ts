@@ -1,9 +1,8 @@
+import { ConnectedHeaders } from './headers';
 import {BYTES, sizeOfUTF8, trim} from './utils';
 
-export interface FrameHeader {
+export interface FrameHeader extends ConnectedHeaders {
     [key: string]: any;
-    server: any;
-    version: any;
     subscription: string;
     ack: any;
 }

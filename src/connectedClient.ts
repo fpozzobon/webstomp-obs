@@ -6,6 +6,7 @@ import { ConnectableObservable } from 'rxjs/Observable/ConnectableObservable';
 import 'rxjs/add/operator/multicast';
 import 'rxjs/add/operator/finally';
 import Frame from './frame';
+import { ACK, AckHeaders, SendHeaders, SubscribeHeaders } from './headers';
 
 interface ISubscriptions {
     [key: string]: Observer<Frame>;
@@ -13,50 +14,6 @@ interface ISubscriptions {
 
 interface IObservables {
     [key: string]: Observable<Frame>;
-}
-
-export interface ConnectionHeaders {
-    login: string;
-    passcode: string;
-    host?: string;
-    'accept-version'?: string;
-    'heart-beat'?: string;
-}
-
-export interface DisconnectHeaders {
-    'receipt'?: string;
-}
-
-export interface StandardHeaders extends DisconnectHeaders {
-    'content-length'?: string;
-    'content-type'?: string;
-}
-
-export interface ExtendedHeaders extends StandardHeaders {
-    'amqp-message-id'?: string,
-    'app-id'?: string,
-    'content-encoding'?: string,
-    'correlation-id'?: string,
-    custom?: string,
-    destination?: string,
-    'message-id'?: string,
-    persistent?: string,
-    redelivered?: string,
-    'reply-to'?: string,
-    subscription?: string,
-    timestamp?: string,
-    type?: string,
-}
-
-export interface UnsubscribeHeaders extends StandardHeaders {
-    id?: string,
-}
-
-export type ACK = 'auto' | 'client' | 'client-individual';
-
-export interface SubscribeHeaders extends UnsubscribeHeaders {
-    ack?: ACK,
-    destination?: string
 }
 
 // STOMP Connected Client Class
@@ -71,8 +28,8 @@ export class ConnectedClient {
     private broadcastReceipterObserver: Observer<Frame>
     private broadcastErrorObservable: Observable<Frame>
     private broadcastErrorObserver: Observer<Frame>
-    private broadcastConnectionErrorObservable: Observable<any>
-    private broadcastConnectionErrorObserver: Observer<any>
+    private broadcastConnectionErrorObservable: Observable<CloseEvent>
+    private broadcastConnectionErrorObserver: Observer<CloseEvent>
 
     constructor(webSocketClient: WebSocketHandler) {
 
@@ -109,10 +66,10 @@ export class ConnectedClient {
 
     // on Connection Error Received event
     // return true if it can handle the reception, false otherwise
-    private _onConnectionErrorReceivedFn = (): (ev: any) => void => {
+    private _onConnectionErrorReceivedFn = (): (ev: CloseEvent) => void => {
         // the `_onConnectionErrorReceivedFn` callback is registered when the client calls
         // `connectionError()`.
-        const onConnectionError: (ev: any) => void = this.broadcastConnectionErrorObserver &&
+        const onConnectionError: (ev: CloseEvent) => void = this.broadcastConnectionErrorObserver &&
                                                      this.broadcastConnectionErrorObserver.next.bind(this.broadcastConnectionErrorObserver);
         return onConnectionError
     }
@@ -127,33 +84,33 @@ export class ConnectedClient {
     }
 
     // [SEND Frame](http://stomp.github.com/stomp-specification-1.1.html#SEND)
-    public send = (destination: string, body: string = '', headers: ExtendedHeaders = {}): void => {
+    public send = (destination: string, body: string = '', headers: SendHeaders = {destination}): void => {
         const headerToSend = { ...headers, destination};
         this.webSocketClient.send(headerToSend, body);
     }
 
     // [BEGIN Frame](http://stomp.github.com/stomp-specification-1.1.html#BEGIN)
-    public begin = (transaction?: any) => {
+    public begin = (transaction?: string) => {
         return this.webSocketClient.begin(transaction);
     }
 
     // [COMMIT Frame](http://stomp.github.com/stomp-specification-1.1.html#COMMIT)
-    public commit = (transaction: any) => {
+    public commit = (transaction: string) => {
         this.webSocketClient.commit(transaction);
     }
 
     // [ABORT Frame](http://stomp.github.com/stomp-specification-1.1.html#ABORT)
-    public abort = (transaction: any) => {
+    public abort = (transaction: string) => {
         this.webSocketClient.abort(transaction);
     }
 
     // [ACK Frame](http://stomp.github.com/stomp-specification-1.1.html#ACK)
-    public ack = (messageID: string, subscription: string, headers = {}) => {
+    public ack = (messageID: string, subscription: string, headers?: AckHeaders) => {
         this.webSocketClient.ack(messageID, subscription, headers)
     }
 
     // [NACK Frame](http://stomp.github.com/stomp-specification-1.1.html#NACK)
-    public nack = (messageID: string, subscription: string, headers = {}) => {
+    public nack = (messageID: string, subscription: string, headers?: AckHeaders) => {
         this.webSocketClient.nack(messageID, subscription, headers)
     }
 
@@ -176,11 +133,11 @@ export class ConnectedClient {
     }
     
     // Return an Observable containing the event when a connection error occure
-    public connectionError = (): Observable<any> => {
+    public connectionError = (): Observable<CloseEvent> => {
 
         // create one and only one broadcast receiver
         if (!this.broadcastConnectionErrorObservable) {
-            const connectionErrorSubscribe: ConnectableObservable<any> = Observable.create((observer: Observer<any>) => {
+            const connectionErrorSubscribe: ConnectableObservable<CloseEvent> = Observable.create((observer: Observer<CloseEvent>) => {
                     this.broadcastConnectionErrorObserver = observer
                 })
                 .finally(() => this.broadcastConnectionErrorObserver ? this.broadcastConnectionErrorObserver = null : null)
@@ -216,11 +173,8 @@ export class ConnectedClient {
     public subscribe = (destination: string, headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
 
         return Observable.create((observer: Observer<Frame>) => {
-            const currentHeader: SubscribeHeaders = {...headers};
-            // for convenience if the `id` header is not set, we create a new one for this client
-            // that will be returned to be able to unsubscribe this subscription
-            if (!currentHeader.id) currentHeader.id = 'sub-' + this.counter++;
-            currentHeader.destination = destination;
+            const id = headers.id || 'sub-' + this.counter++;
+            const currentHeader: SubscribeHeaders = {destination, ack: headers.ack, id };
             this.subscriptions[currentHeader.id] = observer;
 
             this.webSocketClient.subscribe(currentHeader);
