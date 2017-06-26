@@ -1,6 +1,6 @@
 {
   "name": "webstomp-obs",
-  "version": "1.2.0",
+  "version": "1.2.3",
   "description": "Stomp over websocket using observable",
   "main": "./webstompobs.js",
   "typings": "./types/index.d.ts",
@@ -36,7 +36,7 @@
   },
   "homepage": "https://github.com/fpozzobon/webstomp-obs#readme",
   "dependencies": {
-    "rxjs": "^5.1.1"
+    "rxjs": "^5.4.0"
   },
   "devDependencies": {
     "@types/chai": "^3.5.2",
