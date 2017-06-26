@@ -19,8 +19,7 @@ export interface ExtendedHeaders extends StandardHeaders {
 }
 
 export type ConnectionHeaders = {
-    host: string,
-    'accept-version': string,
+    'accept-version'?: string,
     login?: string,
     passcode?: string,
     'heart-beat'?: string
