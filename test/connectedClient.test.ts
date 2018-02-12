@@ -255,14 +255,12 @@ describe ('Stompobservable connectedClient', () => {
         let subscribeSpy
 
         beforeEach ( () => {
-            mockedWebSocketHandlerSpy.subscribe = (header: any) => new Subject()
+            mockedWebSocketHandlerSpy.subscribe = (header: any) => mockedWebSocketHandlerSpy.messageReceivedObservable
             subscribeSpy = Sinon.spy(mockedWebSocketHandlerSpy, 'subscribe')
-            mockedWebSocketHandlerSpy.unSubscribe = Sinon.spy()
         })
 
         afterEach ( () => {
             subscribeSpy.reset()
-            mockedWebSocketHandlerSpy.unSubscribe.reset()
         })
 
         it ('should give back an observable and call webSocketClient.subscribe with the right parameters', () => {
@@ -321,7 +319,7 @@ describe ('Stompobservable connectedClient', () => {
 
         it ('should give back the frame to the subscribers when webSocketClient.messageReceivedObservable is called', (done) => {
             const expectedDestination = "A destination"
-            const expectedFrame = Sinon.stub()
+            const expectedFrame = {headers: {subscription: "sub-0"}}
             client.subscribe(expectedDestination)
                   .subscribe(
                     (frame) => {
@@ -336,7 +334,7 @@ describe ('Stompobservable connectedClient', () => {
 
         it ('should not give back the frame to the other subscribers when webSocketClient.messageReceivedObservable is called', (done) => {
             const expectedDestination = "A destination"
-            const expectedFrame = Sinon.stub()
+            const expectedFrame = {headers: {subscription: "sub-1"}}
             client.subscribe(expectedDestination)
                   .subscribe(
                     (frame) => {
@@ -357,22 +355,6 @@ describe ('Stompobservable connectedClient', () => {
             mockedWebSocketHandlerSpy.messageReceivedObservable.next(expectedFrame)
         })
 
-        it ('should call webSocketClient.unSubscribe when the last subscriber unsubscribe', (done) => {
-            const expectedDestination = "A destination"
-            const subscriber = client.subscribe(expectedDestination)
-                  .subscribe(
-                    (frame) => done(frame),
-                    (err) => done("unexpected " + err),
-                    () => done("unexpected")
-                )
-            subscriber.unsubscribe()
-            Sinon.assert.calledOnce(mockedWebSocketHandlerSpy.unSubscribe)
-            const expectedParams = mockedWebSocketHandlerSpy.subscribe.getCall(0).args
-            const actualParams = mockedWebSocketHandlerSpy.unSubscribe.getCall(0).args
-            expect(actualParams[0]).to.equal(expectedParams[0])
-            done()
-        })
-
     })
 
     describe ('subscribeBroadcast', () => {
@@ -380,7 +362,8 @@ describe ('Stompobservable connectedClient', () => {
         let subscribeSpy
 
         beforeEach ( () => {
-            subscribeSpy = Sinon.spy(client, 'subscribe')
+            mockedWebSocketHandlerSpy.subscribe = (header: any) => mockedWebSocketHandlerSpy.messageReceivedObservable
+            subscribeSpy = Sinon.spy(mockedWebSocketHandlerSpy, 'subscribe')
         })
 
         afterEach ( () => {
@@ -393,7 +376,7 @@ describe ('Stompobservable connectedClient', () => {
             client.subscribeBroadcast(expectedDestination)
             Sinon.assert.calledOnce(subscribeSpy)
             const actualParams = subscribeSpy.getCall(0).args
-            expect(actualParams[0]).to.equal(expectedDestination)
+            expect(actualParams[0].destination).to.equal(expectedDestination)
         })
 
         it ('should call once connectedClient.subscribe', () => {
@@ -412,9 +395,9 @@ describe ('Stompobservable connectedClient', () => {
             Sinon.assert.calledTwice(subscribeSpy)
             expect(subscribe1).to.not.equal(subscribe2)
             const actualParams1 = subscribeSpy.getCall(0).args
-            expect(actualParams1[0]).to.equal(expectedDestination1)
+            expect(actualParams1[0].destination).to.equal(expectedDestination1)
             const actualParams2 = subscribeSpy.getCall(1).args
-            expect(actualParams2[0]).to.equal(expectedDestination2)
+            expect(actualParams2[0].destination).to.equal(expectedDestination2)
         })
 
     })

@@ -185,24 +185,21 @@ describe ('Stompobservable WebSocketHandler', () => {
                                       '{"author":"User 1","text":"' + TEXT_MSG + '"}' +
                                       BYTES.NULL
 
-                let onSubscriptionMsgReceivedSpy = Sinon.spy()
-                let onMsgReceivedSpy = Sinon.spy()
+                let onSubscriptionMsgReceivedSpy
 
                 beforeEach ( () => {
-                    onSubscriptionMsgReceivedSpy = Sinon.spy(tested, <any>'messageReceivedObservable')
+                    onSubscriptionMsgReceivedSpy = Sinon.spy((<any>tested).messageReceivedObservable, 'next')
                 })
 
                 afterEach ( () => {
                     onSubscriptionMsgReceivedSpy.reset()
-                    onMsgReceivedSpy.reset()
                 })
 
                 it ('should call tested.messageReceivedObservable', () => {
                     wsStub.onmessage({data: MESSAGE_MSG})
 
                     Sinon.assert.calledOnce(onSubscriptionMsgReceivedSpy)
-                    Sinon.assert.calledWith(onSubscriptionMsgReceivedSpy, SUBSCRIPTION)
-                    Sinon.assert.calledOnce(onMsgReceivedSpy)
+                    Sinon.assert.calledWithMatch(onSubscriptionMsgReceivedSpy, {body: '{"author":"User 1","text":"test msg"}'})
                 })
 
                 describe ('the parameters', () => {
@@ -215,7 +212,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                         testedNackStub = Sinon.stub(tested, 'nack')
 
                         wsStub.onmessage({data: MESSAGE_MSG})
-                        actualParams = onMsgReceivedSpy.getCall(0).args
+                        actualParams = onSubscriptionMsgReceivedSpy.getCall(0).args
                     })
 
                     afterEach ( () => {
@@ -274,7 +271,7 @@ describe ('Stompobservable WebSocketHandler', () => {
 
                 let testedReceiptedSpy
                 beforeEach ( () => {
-                    testedReceiptedSpy = Sinon.spy(tested, 'messageReceiptedObservable')
+                    testedReceiptedSpy = Sinon.spy(tested.messageReceiptedObservable, 'next')
 
                     wsStub.onmessage({data: RECEIPT_MSG})
                 })
@@ -295,7 +292,7 @@ describe ('Stompobservable WebSocketHandler', () => {
 
                 let testedErrorSpy
                 beforeEach ( () => {
-                    testedErrorSpy = Sinon.spy(tested, 'errorReceivedObservable')
+                    testedErrorSpy = Sinon.spy(tested.errorReceivedObservable, 'next')
 
                     wsStub.onmessage({data: ERROR_MSG})
                 })
@@ -312,7 +309,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                 const fakeEvt = {test: 1}
                 let testedConnectionErrorSpy
                 beforeEach ( () => {
-                    testedConnectionErrorSpy = Sinon.spy(tested, "connectionErrorObservable")
+                    testedConnectionErrorSpy = Sinon.spy(tested.connectionErrorObservable, "next")
 
                     wsStub.onclose(fakeEvt)
                 })
@@ -348,7 +345,6 @@ describe ('Stompobservable WebSocketHandler', () => {
                     subscription.unsubscribe()
 
                     Sinon.assert.calledOnce(disconnectStub)
-                    Sinon.assert.calledWith(disconnectStub, mockedHeaders)
                 })
 
             })
@@ -616,7 +612,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                         beforeEach ( () => {
                             unSubscribeStub = Sinon.stub(tested, 'unSubscribe')
 
-                            actual = tested.subscribe(subscribeHeader)
+                            actual = tested.subscribe(subscribeHeader).subscribe()
                         })
 
                         afterEach ( () => {
@@ -624,15 +620,11 @@ describe ('Stompobservable WebSocketHandler', () => {
                             unSubscribeStub.restore()
                         })
 
-                        it('id of the header', () => {
-                            expect(actual.id).to.equal(expectedId)
-                        })
-
                         it('unsubscribe callback', () => {
                             expect(actual.unsubscribe).to.be.instanceof(Function)
                             actual.unsubscribe()
                             Sinon.assert.calledOnce(unSubscribeStub)
-                            Sinon.assert.calledWith(unSubscribeStub, expectedId)
+                            Sinon.assert.calledWith(unSubscribeStub, subscribeHeader)
                         })
 
                     })

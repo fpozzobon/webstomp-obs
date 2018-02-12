@@ -137,7 +137,6 @@ class WebSocketHandler {
                             // so that a simple call to 'message.ack()' can acknowledge the message.
                             frame.ack = this.ack.bind(this, messageID, subscription);
                             frame.nack = this.nack.bind(this, messageID, subscription);
-
                             this.messageReceivedObservable.next(frame)
                             break;
                         // [RECEIPT Frame](http://stomp.github.com/stomp-specification-1.1.html#RECEIPT)
