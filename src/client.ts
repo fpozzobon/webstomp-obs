@@ -72,7 +72,7 @@ class Client {
                 this.__initConnectedClient( headers, observer)
                 // when unsubscribe, we disconnect the websocket
                 return () => {
-                    this.isConnected && this.wsHandler.disconnect(headers);
+                    this.isConnected && this.wsHandler.disconnect();
                 }
             })
 

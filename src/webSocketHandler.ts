@@ -168,6 +168,7 @@ class WebSocketHandler {
                 this.ws = null;
                 this.connectionErrorObservable.next(ev);
                 onDisconnect (ev);
+                this._cleanObservables();
             };
             this.ws.onopen = () => {
                 this._debug('Web Socket Opened...');
@@ -180,11 +181,17 @@ class WebSocketHandler {
             };
 
             return () => {
-                this.disconnect(headers)
+                this.disconnect()
             }
 
         })
 
+    }
+
+    private _cleanObservables = () => {
+        this.messageReceivedObservable.observers.forEach((obs: any) => obs.unsubscribe());
+        this.messageReceiptedObservable.observers.forEach((obs: any) => obs.unsubscribe());
+        this.errorReceivedObservable.observers.forEach((obs: any) => obs.unsubscribe());
     }
 
     // Heart-beat negotiation
@@ -202,6 +209,7 @@ class WebSocketHandler {
             this.ws.onclose = null;
             this._transmit('DISCONNECT', headers);
             this.ws.close();
+            this._cleanObservables();
             this.ws = null;
         }
     }
@@ -303,14 +311,8 @@ class WebSocketHandler {
 
     // [SUBSCRIBE Frame](http://stomp.github.com/stomp-specification-1.1.html#SUBSCRIBE)
     public subscribe = ( headers: SubscribeHeaders) => {
-        return Observable.create((observer: Observer<Frame>) => {
-            this._transmit('SUBSCRIBE', headers);
-            const subscription = this.messageReceivedObservable.subscribe(observer)
-            return () => {
-                  subscription.unsubscribe();
-                  this.unSubscribe(headers);
-            };
-        })
+        this._transmit('SUBSCRIBE', headers);
+        return this.messageReceivedObservable.finally(() => this.ws && this.unSubscribe(headers));
     }
 
     // [UNSUBSCRIBE Frame](http://stomp.github.com/stomp-specification-1.1.html#UNSUBSCRIBE)
