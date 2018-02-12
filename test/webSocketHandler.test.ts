@@ -624,7 +624,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                             expect(actual.unsubscribe).to.be.instanceof(Function)
                             actual.unsubscribe()
                             Sinon.assert.calledOnce(unSubscribeStub)
-                            Sinon.assert.calledWith(unSubscribeStub, subscribeHeader)
+                            Sinon.assert.calledWith(unSubscribeStub, {id: subscribeHeader.id})
                         })
 
                     })

@@ -311,7 +311,7 @@ class WebSocketHandler {
     // [SUBSCRIBE Frame](http://stomp.github.com/stomp-specification-1.1.html#SUBSCRIBE)
     public subscribe = ( headers: SubscribeHeaders) => {
         this._transmit('SUBSCRIBE', headers);
-        return this.messageReceivedObservable.finally(() => this.ws && this.unSubscribe(headers));
+        return this.messageReceivedObservable.finally(() => this.ws && this.unSubscribe({id: headers.id}));
     }
 
     // [UNSUBSCRIBE Frame](http://stomp.github.com/stomp-specification-1.1.html#UNSUBSCRIBE)
