@@ -90,7 +90,7 @@ describe ('Stompobservable WebSocketHandler', () => {
             it ('should set ws.binaryType to arraybuffer', () => {
                 expect(wsStub.binaryType).to.eql('arraybuffer')
             })
-            
+
             it ('should set ws.onmessage to be a function', () => {
                 expect(wsStub.onmessage).to.be.instanceof(Function)
             })
@@ -120,7 +120,7 @@ describe ('Stompobservable WebSocketHandler', () => {
 
                 let sendStub
                 beforeEach ( () => {
-                    sendStub = Sinon.stub(tested, '_wsSend')
+                    sendStub = Sinon.stub(tested, <any>'_wsSend')
                     wsStub.close = Sinon.stub()
                     wsStub.onmessage({data: CONNECTED_MSG})
                 })
@@ -142,7 +142,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                     beforeEach ( () => {
                         callbackParams = heartbeatMock.startHeartbeat.getCall(0).args[1]
                     })
-                    
+
                     it ('should be called', () => {
                         Sinon.assert.calledOnce(heartbeatMock.startHeartbeat)
                     })
@@ -156,7 +156,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                         const { send } = callbackParams;
                         const expectedData = 'A data';
                         send(expectedData);
-                        
+
                         Sinon.assert.calledOnce(sendStub)
                         Sinon.assert.calledWith(sendStub, wsStub, expectedData)
                     })
@@ -164,7 +164,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                     it ('should contain a close callback', () => {
                         const { close } = callbackParams;
                         close();
-                        
+
                         Sinon.assert.calledOnce(wsStub.close)
                     })
 
@@ -187,12 +187,9 @@ describe ('Stompobservable WebSocketHandler', () => {
 
                 let onSubscriptionMsgReceivedSpy = Sinon.spy()
                 let onMsgReceivedSpy = Sinon.spy()
-                
+
                 beforeEach ( () => {
-                    tested.onMessageReceived = (subscription: string): (Frame) => void => {
-                        onSubscriptionMsgReceivedSpy(subscription)
-                        return onMsgReceivedSpy
-                    }
+                    onSubscriptionMsgReceivedSpy = Sinon.spy(tested, <any>'messageReceivedObservable')
                 })
 
                 afterEach ( () => {
@@ -200,7 +197,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                     onMsgReceivedSpy.reset()
                 })
 
-                it ('should call tested.onMessageReceived', () => {
+                it ('should call tested.messageReceivedObservable', () => {
                     wsStub.onmessage({data: MESSAGE_MSG})
 
                     Sinon.assert.calledOnce(onSubscriptionMsgReceivedSpy)
@@ -210,13 +207,13 @@ describe ('Stompobservable WebSocketHandler', () => {
 
                 describe ('the parameters', () => {
 
-                    let actualParams                             
+                    let actualParams
                     let testedAckStub
-                    let testedNackStub           
+                    let testedNackStub
                     beforeEach ( () => {
                         testedAckStub = Sinon.stub(tested, 'ack')
                         testedNackStub = Sinon.stub(tested, 'nack')
-                        
+
                         wsStub.onmessage({data: MESSAGE_MSG})
                         actualParams = onMsgReceivedSpy.getCall(0).args
                     })
@@ -241,7 +238,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                         it ('should be a function', () => {
                             expect(actualParams[0].ack).to.be.instanceof(Function)
                         })
-                        
+
                         it ('should call tested.ack', () => {
                             actualParams[0].ack()
                             Sinon.assert.calledOnce(testedAckStub)
@@ -251,11 +248,11 @@ describe ('Stompobservable WebSocketHandler', () => {
                     })
 
                     describe ('nack', () => {
-                        
+
                         it ('should be a function', () => {
                             expect(actualParams[0].nack).to.be.instanceof(Function)
                         })
-                        
+
                         it ('should call tested.ack', () => {
                             actualParams[0].nack()
                             Sinon.assert.calledOnce(testedNackStub)
@@ -265,27 +262,26 @@ describe ('Stompobservable WebSocketHandler', () => {
                     })
 
                 })
-                
+
             })
 
             describe ('when RECEIPT received', () => {
 
                 const RECEIPT_ID = '123'
                 const RECEIPT_MSG = 'RECEIPT' + BYTES.LF +
-                                      'receipt-id:' + RECEIPT_ID + BYTES.LF + 
+                                      'receipt-id:' + RECEIPT_ID + BYTES.LF +
                                       BYTES.LF + BYTES.NULL
-                
-                let testedReceiptedStub
+
+                let testedReceiptedSpy
                 beforeEach ( () => {
-                    testedReceiptedStub = Sinon.stub()
-                    tested.onMessageReceipted = () => testedReceiptedStub
+                    testedReceiptedSpy = Sinon.spy(tested, 'messageReceiptedObservable')
 
                     wsStub.onmessage({data: RECEIPT_MSG})
                 })
 
                 it ('should call tested.onMessageReceipted', () => {
-                    const actualParams = testedReceiptedStub.getCall(0).args
-                    Sinon.assert.calledOnce(testedReceiptedStub)
+                    const actualParams = testedReceiptedSpy.getCall(0).args
+                    Sinon.assert.calledOnce(testedReceiptedSpy)
                     expect(actualParams[0].headers['receipt-id']).to.be.equal(RECEIPT_ID)
                 })
             })
@@ -294,50 +290,48 @@ describe ('Stompobservable WebSocketHandler', () => {
 
                 const ERROR_ID = '123'
                 const ERROR_MSG = 'ERROR' + BYTES.LF +
-                                      'error-id:' + ERROR_ID + BYTES.LF + 
+                                      'error-id:' + ERROR_ID + BYTES.LF +
                                       BYTES.LF + BYTES.NULL
-                
-                let testedErrorStub
+
+                let testedErrorSpy
                 beforeEach ( () => {
-                    testedErrorStub = Sinon.stub()
-                    tested.onErrorReceived = () => testedErrorStub
+                    testedErrorSpy = Sinon.spy(tested, 'errorReceivedObservable')
 
                     wsStub.onmessage({data: ERROR_MSG})
                 })
 
                 it ('should call tested.onMessageReceipted', () => {
-                    Sinon.assert.calledOnce(testedErrorStub)
-                    const actualParams = testedErrorStub.getCall(0).args
+                    Sinon.assert.calledOnce(testedErrorSpy)
+                    const actualParams = testedErrorSpy.getCall(0).args
                     expect(actualParams[0].headers['error-id']).to.be.equal(ERROR_ID)
                 })
             })
 
             describe ('when ws.onclose is called', () => {
-                
+
                 const fakeEvt = {test: 1}
-                let testedConnectionErrorStub
+                let testedConnectionErrorSpy
                 beforeEach ( () => {
-                    testedConnectionErrorStub = Sinon.stub()
-                    tested.onConnectionError = () => testedConnectionErrorStub
+                    testedConnectionErrorSpy = Sinon.spy(tested, "connectionErrorObservable")
 
                     wsStub.onclose(fakeEvt)
                 })
 
                 it ('should call tested.onMessageReceipted', () => {
-                    Sinon.assert.calledOnce(testedConnectionErrorStub)
-                    Sinon.assert.calledWith(testedConnectionErrorStub, fakeEvt)
+                    Sinon.assert.calledOnce(testedConnectionErrorSpy)
+                    Sinon.assert.calledWith(testedConnectionErrorSpy, fakeEvt)
                 })
-                
+
                 it ('should call onDisconnect callback', () => {
                     Sinon.assert.calledOnce(onDisconnectedSpy)
                     Sinon.assert.calledWith(onDisconnectedSpy, fakeEvt)
                 })
-                
+
                 it ('should call heartbeatMock.stopHeartbeat', () => {
                     Sinon.assert.calledOnce(heartbeatMock.stopHeartbeat)
                 })
             })
-        
+
             describe ('when unsubscribe', () => {
 
                 let disconnectStub
@@ -364,7 +358,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                 const maxWebSocketFrameSize = 16 * 1024
                 let transmitWsStub
                 const shortData = 'any data that is very lohng\n so it has to be \n sent in multiple message'
-                
+
                 beforeEach ( () => {
                     transmitWsStub = Sinon.stub()
                     transmitWsStub.send = Sinon.stub()
@@ -402,11 +396,11 @@ describe ('Stompobservable WebSocketHandler', () => {
                 const expectedMarshalled = Sinon.stub()
                 let sendStub
                 let marshallStub
-                
+
                 beforeEach ( () => {
                     marshallStub = Sinon.stub(Frame, 'marshall')
                     marshallStub.withArgs(command, headers, body).returns(expectedMarshalled)
-                    sendStub = Sinon.stub(tested, '_wsSend')
+                    sendStub = Sinon.stub(tested, <any>'_wsSend')
                 })
 
                 afterEach ( () => {
@@ -424,7 +418,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                 })
 
             })
-            
+
             describe ('transmit', () => {
 
                 const expectedHeader = {test: 'An header'}
@@ -432,7 +426,7 @@ describe ('Stompobservable WebSocketHandler', () => {
 
                 let transmitStub
                 beforeEach ( () => {
-                    transmitStub = Sinon.stub(tested, '_transmit')
+                    transmitStub = Sinon.stub(tested, <any>'_transmit')
                 })
 
                 afterEach ( () => {
@@ -442,16 +436,16 @@ describe ('Stompobservable WebSocketHandler', () => {
 
 
                 describe ('when ws.onopen is called', () => {
-                    
+
                     it ('should call ws.send with a connect message', () => {
                         wsStub.onopen()
 
                         Sinon.assert.calledOnce(transmitStub)
                         Sinon.assert.calledWith(transmitStub, 'CONNECT', expectedHeaders)
                     })
-                    
+
                 })
-                
+
                 describe ('disconnect', () => {
 
                     let onCloseSpy
@@ -479,7 +473,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                     it('should call ws.close', () => {
                         Sinon.assert.calledOnce(wsStub.close)
                     })
-                    
+
                     it ('should call heartbeatMock.stopHeartbeat', () => {
                         Sinon.assert.calledOnce(heartbeatMock.stopHeartbeat)
                     })
