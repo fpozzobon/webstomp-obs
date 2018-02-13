@@ -76,11 +76,6 @@ class WebSocketHandler {
         // IWebSocket frames (default is 16KiB)
         this.maxWebSocketFrameSize = 16 * 1024;
 
-        this.messageReceivedObservable = new Subject()
-        this.messageReceiptedObservable = new Subject()
-        this.errorReceivedObservable = new Subject()
-        this.connectionErrorObservable = new Subject()
-
     }
 
     public initConnection = (headers: ConnectionHeaders,
@@ -91,6 +86,7 @@ class WebSocketHandler {
             if (this.ws) {
                 throw 'Error, the connection has already been created !'
             }
+            this._initObservables();
             this.ws = this.createWS();
             if (!this.ws) {
                 throw 'Error, createWsConnection function returned null !'
@@ -167,7 +163,6 @@ class WebSocketHandler {
                 this.ws = null;
                 this.connectionErrorObservable.next(ev);
                 onDisconnect (ev);
-                this._cleanObservables();
             };
             this.ws.onopen = () => {
                 this._debug('Web Socket Opened...');
@@ -187,10 +182,16 @@ class WebSocketHandler {
 
     }
 
-    private _cleanObservables = () => {
-        this.messageReceivedObservable.observers.forEach((obs: any) => obs.unsubscribe());
-        this.messageReceiptedObservable.observers.forEach((obs: any) => obs.unsubscribe());
-        this.errorReceivedObservable.observers.forEach((obs: any) => obs.unsubscribe());
+    private _initObservables = () => {
+        this.messageReceivedObservable && this.messageReceivedObservable.complete();
+        this.messageReceiptedObservable && this.messageReceiptedObservable.complete();
+        this.errorReceivedObservable && this.errorReceivedObservable.complete();
+        this.connectionErrorObservable && this.connectionErrorObservable.complete();
+
+        this.messageReceivedObservable = new Subject()
+        this.messageReceiptedObservable = new Subject()
+        this.errorReceivedObservable = new Subject()
+        this.connectionErrorObservable = new Subject()
     }
 
     // Heart-beat negotiation
@@ -208,7 +209,6 @@ class WebSocketHandler {
             this.ws.onclose = null;
             this._transmit('DISCONNECT', headers);
             this.ws.close();
-            this._cleanObservables();
             this.ws = null;
         }
     }

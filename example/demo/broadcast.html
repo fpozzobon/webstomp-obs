@@ -101,11 +101,12 @@
                 b: document.querySelector('[data-room="b"]')
             };
 
-
             var names = {
                 a: 'User 1',
                 b: 'User 2'
             };
+
+            var subscribeEventHandlers = {}
 
             var jsonEncoder = {
                 encode: function(msg) {
@@ -154,9 +155,9 @@
                     return false;
                 });
 
-
                 var button = roomEl.querySelector('button');
-                button.addEventListener('click', function() {
+                button.removeEventListener('click', subscribeEventHandlers[client]);
+                subscribeEventHandlers[client] = function() {
                     if (source.isStopped) {
                         source = connectedClient
                                 .subscribeBroadcast('/topic/webstompobs-chat-example')
@@ -174,7 +175,8 @@
                     } else {
                         source.unsubscribe();
                     }
-                });
+                }
+                button.addEventListener('click', subscribeEventHandlers[client]);
             }
             function onMessage(client, msg) {
                 msg = encoder.decode(msg.body);
