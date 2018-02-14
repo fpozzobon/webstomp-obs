@@ -3,6 +3,7 @@ import * as Sinon from 'sinon'
 import { ConnectedClient } from '../src/connectedClient'
 import WebSocketHandler from '../src/webSocketHandler'
 import { Observable } from 'rxjs/Observable'
+import { Subject } from 'rxjs/Subject';
 
 describe ('Stompobservable connectedClient', () => {
     let client: ConnectedClient
@@ -11,6 +12,10 @@ describe ('Stompobservable connectedClient', () => {
 
     beforeEach( () => {
         mockedWebSocketHandlerSpy = Sinon.mock()
+        mockedWebSocketHandlerSpy.messageReceiptedObservable = new Subject()
+        mockedWebSocketHandlerSpy.connectionErrorObservable = new Subject()
+        mockedWebSocketHandlerSpy.messageReceivedObservable = new Subject()
+        mockedWebSocketHandlerSpy.errorReceivedObservable = new Subject()
         client = new ConnectedClient(mockedWebSocketHandlerSpy)
     })
 
@@ -49,7 +54,7 @@ describe ('Stompobservable connectedClient', () => {
             expect(actualParams[0]).to.eql({destination: expectedDestination})
 
         })
-        
+
     })
 
     describe ('begin', () => {
@@ -93,7 +98,7 @@ describe ('Stompobservable connectedClient', () => {
             Sinon.assert.calledWith(mockedWebSocketHandlerSpy.commit, fakeTransaction)
         })
     })
-    
+
     describe ('abort', () => {
 
         beforeEach ( () => {
@@ -111,7 +116,7 @@ describe ('Stompobservable connectedClient', () => {
             Sinon.assert.calledWith(mockedWebSocketHandlerSpy.abort, fakeTransaction)
         })
     })
-    
+
     describe ('ack', () => {
 
         beforeEach ( () => {
@@ -168,7 +173,7 @@ describe ('Stompobservable connectedClient', () => {
             expect(otherReceiptObservable).to.equal(actualReceiptObservable)
         })
 
-        it ('should give back the frame to the subscribers when webSocketClient.onMessageReceipted is called', (done) => {
+        it ('should give back the frame to the subscribers when webSocketClient.messageReceiptedObservable is called', (done) => {
             const expectedFrame = Sinon.stub()
             client.receipt().subscribe(
                 (frame) => {
@@ -178,7 +183,7 @@ describe ('Stompobservable connectedClient', () => {
                 (err) => done("unexpected " + err),
                 () => done("unexpected")
             )
-            mockedWebSocketHandlerSpy.onMessageReceipted()(expectedFrame)
+            mockedWebSocketHandlerSpy.messageReceiptedObservable.next(expectedFrame)
         })
 
     })
@@ -199,7 +204,7 @@ describe ('Stompobservable connectedClient', () => {
             expect(otherReceiptObservable).to.equal(actualReceiptObservable)
         })
 
-        it ('should give back the error to the subscribers when webSocketClient.onErrorReceived is called', (done) => {
+        it ('should give back the error to the subscribers when webSocketClient.errorReceivedObservable is called', (done) => {
             const expectedError = Sinon.stub()
             client.error().subscribe(
                 (error) => {
@@ -209,7 +214,7 @@ describe ('Stompobservable connectedClient', () => {
                 (err) => done("unexpected " + err),
                 () => done("unexpected")
             )
-            mockedWebSocketHandlerSpy.onErrorReceived()(expectedError)
+            mockedWebSocketHandlerSpy.errorReceivedObservable.next(expectedError)
         })
 
     })
@@ -230,7 +235,7 @@ describe ('Stompobservable connectedClient', () => {
             expect(otherReceiptObservable).to.equal(actualReceiptObservable)
         })
 
-        it ('should give back the connectionError to the subscribers when webSocketClient.onConnectionError is called', (done) => {
+        it ('should give back the connectionError to the subscribers when webSocketClient.connectionErrorObservable is called', (done) => {
             const expectedError = Sinon.stub()
             client.connectionError().subscribe(
                 (error) => {
@@ -240,21 +245,22 @@ describe ('Stompobservable connectedClient', () => {
                 (err) => done("unexpected " + err),
                 () => done("unexpected")
             )
-            mockedWebSocketHandlerSpy.onConnectionError()(expectedError)
+            mockedWebSocketHandlerSpy.connectionErrorObservable.next(expectedError)
         })
 
     })
 
     describe ('subscribe', () => {
 
+        let subscribeSpy
+
         beforeEach ( () => {
-            mockedWebSocketHandlerSpy.subscribe = Sinon.spy()
-            mockedWebSocketHandlerSpy.unSubscribe = Sinon.spy()
+            mockedWebSocketHandlerSpy.subscribe = (header: any) => mockedWebSocketHandlerSpy.messageReceivedObservable
+            subscribeSpy = Sinon.spy(mockedWebSocketHandlerSpy, 'subscribe')
         })
 
         afterEach ( () => {
-            mockedWebSocketHandlerSpy.subscribe.reset()
-            mockedWebSocketHandlerSpy.unSubscribe.reset()
+            subscribeSpy.reset()
         })
 
         it ('should give back an observable and call webSocketClient.subscribe with the right parameters', () => {
@@ -280,7 +286,7 @@ describe ('Stompobservable connectedClient', () => {
                     (err) => done("unexpected " + err),
                     () => done("unexpected")
                 )
-            const actualParams = mockedWebSocketHandlerSpy.subscribe.getCall(0).args
+            const actualParams = subscribeSpy.getCall(0).args
             Sinon.assert.calledOnce(mockedWebSocketHandlerSpy.subscribe)
             expect(actualParams[0].destination).to.equal(expectedDestination)
             expect(actualParams[0].id).to.equal('sub-0')
@@ -311,9 +317,9 @@ describe ('Stompobservable connectedClient', () => {
             done()
         })
 
-        it ('should give back the frame to the subscribers when webSocketClient.onMessageReceived is called', (done) => {
+        it ('should give back the frame to the subscribers when webSocketClient.messageReceivedObservable is called', (done) => {
             const expectedDestination = "A destination"
-            const expectedFrame = Sinon.stub()
+            const expectedFrame = {headers: {subscription: "sub-0"}}
             client.subscribe(expectedDestination)
                   .subscribe(
                     (frame) => {
@@ -323,12 +329,12 @@ describe ('Stompobservable connectedClient', () => {
                     (err) => done("unexpected " + err),
                     () => done("unexpected")
                 )
-            mockedWebSocketHandlerSpy.onMessageReceived('sub-0')(expectedFrame)
+            mockedWebSocketHandlerSpy.messageReceivedObservable.next(expectedFrame)
         })
 
-        it ('should not give back the frame to the other subscribers when webSocketClient.onMessageReceived is called', (done) => {
+        it ('should not give back the frame to the other subscribers when webSocketClient.messageReceivedObservable is called', (done) => {
             const expectedDestination = "A destination"
-            const expectedFrame = Sinon.stub()
+            const expectedFrame = {headers: {subscription: "sub-1"}}
             client.subscribe(expectedDestination)
                   .subscribe(
                     (frame) => {
@@ -346,23 +352,7 @@ describe ('Stompobservable connectedClient', () => {
                     (err) => done("unexpected " + err),
                     () => done("unexpected")
                 )
-            mockedWebSocketHandlerSpy.onMessageReceived('sub-1')(expectedFrame)
-        })
-
-        it ('should call webSocketClient.unSubscribe when the last subscriber unsubscribe', (done) => {
-            const expectedDestination = "A destination"
-            const subscriber = client.subscribe(expectedDestination)
-                  .subscribe(
-                    (frame) => done(frame),
-                    (err) => done("unexpected " + err),
-                    () => done("unexpected")
-                )
-            subscriber.unsubscribe()
-            Sinon.assert.calledOnce(mockedWebSocketHandlerSpy.unSubscribe)
-            const expectedParams = mockedWebSocketHandlerSpy.subscribe.getCall(0).args
-            const actualParams = mockedWebSocketHandlerSpy.unSubscribe.getCall(0).args
-            expect(actualParams[0]).to.equal(expectedParams[0])
-            done()
+            mockedWebSocketHandlerSpy.messageReceivedObservable.next(expectedFrame)
         })
 
     })
@@ -372,7 +362,8 @@ describe ('Stompobservable connectedClient', () => {
         let subscribeSpy
 
         beforeEach ( () => {
-            subscribeSpy = Sinon.spy(client, 'subscribe')
+            mockedWebSocketHandlerSpy.subscribe = (header: any) => mockedWebSocketHandlerSpy.messageReceivedObservable
+            subscribeSpy = Sinon.spy(mockedWebSocketHandlerSpy, 'subscribe')
         })
 
         afterEach ( () => {
@@ -385,9 +376,9 @@ describe ('Stompobservable connectedClient', () => {
             client.subscribeBroadcast(expectedDestination)
             Sinon.assert.calledOnce(subscribeSpy)
             const actualParams = subscribeSpy.getCall(0).args
-            expect(actualParams[0]).to.equal(expectedDestination)
+            expect(actualParams[0].destination).to.equal(expectedDestination)
         })
-        
+
         it ('should call once connectedClient.subscribe', () => {
             const expectedDestination = "A destination"
             const subscribe1 = client.subscribeBroadcast(expectedDestination)
@@ -404,9 +395,9 @@ describe ('Stompobservable connectedClient', () => {
             Sinon.assert.calledTwice(subscribeSpy)
             expect(subscribe1).to.not.equal(subscribe2)
             const actualParams1 = subscribeSpy.getCall(0).args
-            expect(actualParams1[0]).to.equal(expectedDestination1)
+            expect(actualParams1[0].destination).to.equal(expectedDestination1)
             const actualParams2 = subscribeSpy.getCall(1).args
-            expect(actualParams2[0]).to.equal(expectedDestination2)
+            expect(actualParams2[0].destination).to.equal(expectedDestination2)
         })
 
     })

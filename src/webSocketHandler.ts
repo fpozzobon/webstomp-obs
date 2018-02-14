@@ -1,5 +1,6 @@
 import { Observable } from 'rxjs/Observable';
 import { Observer } from 'rxjs/Observer';
+import { Subject } from 'rxjs/Subject';
 
 import Frame from './frame';
 import { IWebSocket } from './client';
@@ -46,10 +47,10 @@ class WebSocketHandler {
     private heartbeatSettings: HeartbeatOptions
     private heartbeat: Heartbeat
 
-    public onMessageReceived: (subscription: string) => (Frame) => void
-    public onMessageReceipted: () => (Frame) => void
-    public onErrorReceived: () => (Frame) => void
-    public onConnectionError: () => (ev: CloseEvent) => void
+    private messageReceivedObservable: Subject<Frame>
+    public messageReceiptedObservable: Subject<Frame>
+    public errorReceivedObservable: Subject<Frame>
+    public connectionErrorObservable: Subject<CloseEvent>
 
     constructor(createWsConnection: () => IWebSocket, options: WsOptions) {
 
@@ -85,6 +86,7 @@ class WebSocketHandler {
             if (this.ws) {
                 throw 'Error, the connection has already been created !'
             }
+            this._initObservables();
             this.ws = this.createWS();
             if (!this.ws) {
                 throw 'Error, createWsConnection function returned null !'
@@ -121,31 +123,17 @@ class WebSocketHandler {
                             break;
                         // [MESSAGE Frame](http://stomp.github.com/stomp-specification-1.1.html#MESSAGE)
                         case 'MESSAGE':
-                            // the 'onreceive' callback is registered when the client calls
-                            // 'subscribe()'.
-                            // If there is registered subscription for the received message,
-                            // we used the default 'onreceive' method that the client can set.
-                            // This is useful for subscriptions that are automatically created
-                            // on the browser side (e.g. [RabbitMQ's temporary
-                            // queues](http://www.rabbitmq.com/stomp.html)).
-                            const subscription: string = frame.headers.subscription;
-
-                            const onreceive: Function = this.onMessageReceived && this.onMessageReceived(subscription);
-                            if (onreceive) {
-                                // 1.2 define ack header if ack is set to client
-                                // and this header must be used for ack/nack
-                                const messageID: string = this.version === VERSIONS.V1_2 &&
-                                    frame.headers.ack ||
-                                    frame.headers['message-id'];
-                                // add 'ack()' and 'nack()' methods directly to the returned frame
-                                // so that a simple call to 'message.ack()' can acknowledge the message.
-                                frame.ack = this.ack.bind(this, messageID, subscription);
-                                frame.nack = this.nack.bind(this, messageID, subscription);
-                                onreceive(frame);
-                            } else {
-                                this._debug(`Unhandled received MESSAGE: ${frame}`);
-                            }
-
+                            // 1.2 define ack header if ack is set to client
+                            // and this header must be used for ack/nack
+                            const subscription: string = frame.headers.subscription
+                            const messageID: string = this.version === VERSIONS.V1_2 &&
+                                frame.headers.ack ||
+                                frame.headers['message-id'];
+                            // add 'ack()' and 'nack()' methods directly to the returned frame
+                            // so that a simple call to 'message.ack()' can acknowledge the message.
+                            frame.ack = this.ack.bind(this, messageID, subscription);
+                            frame.nack = this.nack.bind(this, messageID, subscription);
+                            this.messageReceivedObservable.next(frame)
                             break;
                         // [RECEIPT Frame](http://stomp.github.com/stomp-specification-1.1.html#RECEIPT)
                         //
@@ -158,11 +146,11 @@ class WebSocketHandler {
                         //       ...
                         //     }
                         case 'RECEIPT':
-                            if (this.onMessageReceipted) this.onMessageReceipted()(frame);
+                            this.messageReceiptedObservable.next(frame);
                             break;
                         // [ERROR Frame](http://stomp.github.com/stomp-specification-1.1.html#ERROR)
                         case 'ERROR':
-                            if(this.onErrorReceived) this.onErrorReceived()(frame)
+                            this.errorReceivedObservable.next(frame);
                             break;
                         default:
                             this._debug(`Unhandled frame: ${frame}`);
@@ -173,7 +161,7 @@ class WebSocketHandler {
                 this._debug(`Whoops! Lost connection to ${this.ws.url}:`, ev);
                 this.heartbeat.stopHeartbeat();
                 this.ws = null;
-                this.onConnectionError && this.onConnectionError()(ev);
+                this.connectionErrorObservable.next(ev);
                 onDisconnect (ev);
             };
             this.ws.onopen = () => {
@@ -187,11 +175,23 @@ class WebSocketHandler {
             };
 
             return () => {
-                this.disconnect(headers)
+                this.disconnect()
             }
 
         })
 
+    }
+
+    private _initObservables = () => {
+        this.messageReceivedObservable && this.messageReceivedObservable.complete();
+        this.messageReceiptedObservable && this.messageReceiptedObservable.complete();
+        this.errorReceivedObservable && this.errorReceivedObservable.complete();
+        this.connectionErrorObservable && this.connectionErrorObservable.complete();
+
+        this.messageReceivedObservable = new Subject()
+        this.messageReceiptedObservable = new Subject()
+        this.errorReceivedObservable = new Subject()
+        this.connectionErrorObservable = new Subject()
     }
 
     // Heart-beat negotiation
@@ -311,10 +311,7 @@ class WebSocketHandler {
     // [SUBSCRIBE Frame](http://stomp.github.com/stomp-specification-1.1.html#SUBSCRIBE)
     public subscribe = ( headers: SubscribeHeaders) => {
         this._transmit('SUBSCRIBE', headers);
-        return {
-            id: headers.id,
-            unsubscribe: this.unSubscribe.bind(this, headers.id)
-        };
+        return this.messageReceivedObservable.finally(() => this.ws && this.unSubscribe({id: headers.id}));
     }
 
     // [UNSUBSCRIBE Frame](http://stomp.github.com/stomp-specification-1.1.html#UNSUBSCRIBE)
