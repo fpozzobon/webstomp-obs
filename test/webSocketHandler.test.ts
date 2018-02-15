@@ -43,18 +43,9 @@ describe ('Stompobservable WebSocketHandler', () => {
         let actualConnectionObservable
         const mockedHeaders = {host: 'an host', 'accept-version': '1.2,1.1,1.0', login: 'a login'}
         const expectedHeaders = { 'heart-beat': "10000,10000", ...mockedHeaders}
-        let onDisconnectedSpy = Sinon.spy()
-
-        beforeEach ( () => {
-            onDisconnectedSpy = Sinon.spy()
-        })
-
-        afterEach ( () => {
-            onDisconnectedSpy.reset()
-        })
 
         it ('should return an observable', () => {
-            actualConnectionObservable = tested.initConnection(mockedHeaders, onDisconnectedSpy)
+            actualConnectionObservable = tested.initConnection(mockedHeaders)
             expect(actualConnectionObservable).to.exist
             expect(actualConnectionObservable).to.be.instanceof(Observable)
         })
@@ -70,7 +61,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                 msgReceivedSpy = Sinon.spy()
                 msgErrorSpy = Sinon.spy()
                 msgCompleteSpy = Sinon.spy()
-                actualConnectionObservable = tested.initConnection(mockedHeaders, onDisconnectedSpy)
+                actualConnectionObservable = tested.initConnection(mockedHeaders)
                 subscription = actualConnectionObservable.subscribe(
                     (frame) => msgReceivedSpy(frame),
                     (err) => msgErrorSpy(err),
@@ -310,22 +301,11 @@ describe ('Stompobservable WebSocketHandler', () => {
                 let testedConnectionErrorSpy
                 beforeEach ( () => {
                     testedConnectionErrorSpy = Sinon.spy(tested.connectionErrorObservable, "next")
-
                     wsStub.onclose(fakeEvt)
                 })
 
-                it ('should call tested.onMessageReceipted', () => {
-                    Sinon.assert.calledOnce(testedConnectionErrorSpy)
-                    Sinon.assert.calledWith(testedConnectionErrorSpy, fakeEvt)
-                })
-
-                it ('should call onDisconnect callback', () => {
-                    Sinon.assert.calledOnce(onDisconnectedSpy)
-                    Sinon.assert.calledWith(onDisconnectedSpy, fakeEvt)
-                })
-
                 it ('should call heartbeatMock.stopHeartbeat', () => {
-                    Sinon.assert.calledOnce(heartbeatMock.stopHeartbeat)
+                    Sinon.assert.calledTwice(heartbeatMock.stopHeartbeat)
                 })
             })
 
@@ -449,6 +429,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                         wsStub.close = Sinon.stub()
                         onCloseSpy = Sinon.spy(wsStub, 'onclose')
 
+                        tested["connected"] = true // we force the flag connected
                         tested.disconnect()
                     })
 
