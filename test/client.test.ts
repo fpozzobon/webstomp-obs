@@ -7,16 +7,19 @@ import * as WebSocketHandler from '../src/webSocketHandler'
 
 describe ('Stompobservable client', () => {
     const TTL = 100
-    let expectedCreateWsConnection 
+    let expectedCreateWsConnection
     let expectedOptions
     let connectCallback
     let disconnectCallback
     let connectedClientSpy
+    const initConnectionStub = Sinon.stub()
     const webSocketHandlerMock = {
-        initConnection: (headers: any,
-                             onDisconnect: (ev: any) => void) => {
-                                 disconnectCallback = onDisconnect
-                                 return Observable.create((observer) => connectCallback = () => observer.next(null))
+        initConnection: (headers: any) => {
+                                 return Observable.create((observer) => {
+                                    initConnectionStub()
+                                    disconnectCallback = () => observer.error(null)
+                                    connectCallback = () => observer.next(null)
+                                 })
                                 },
         disconnect: Sinon.stub()
     }
@@ -40,6 +43,7 @@ describe ('Stompobservable client', () => {
         webSocketHandlerSpy.restore()
         expectedCreateWsConnection.reset()
         webSocketHandlerMock.disconnect.reset()
+        initConnectionStub.reset()
         initConnectionSpy.reset()
         initConnectionSpy.restore()
         this.clock.restore()
@@ -68,14 +72,14 @@ describe ('Stompobservable client', () => {
             Sinon.assert.calledOnce(initConnectionSpy)
             Sinon.assert.calledWith(initConnectionSpy, expectedHeaders)
         })
-        
+
         it ('should not create a new Observable if already connected', () => {
             const expectedObservable = testedClient.connect(expectedHeaders)
             const actualObservable = testedClient.connect(expectedHeaders)
             Sinon.assert.calledOnce(initConnectionSpy)
             expect(actualObservable).to.equal(expectedObservable)
         })
-        
+
     })
 
     describe ('subscribe to a connected client', () => {
@@ -125,7 +129,8 @@ describe ('Stompobservable client', () => {
                     expect(client).to.equal(connectedClientSpy.getCall(nbCall).returnValue)
                     if (nbCall > 0) {
                         Sinon.assert.notCalled(webSocketHandlerMock.disconnect)
-                        Sinon.assert.calledTwice(initConnectionSpy)
+                        Sinon.assert.calledOnce(initConnectionSpy)
+                        Sinon.assert.calledTwice(initConnectionStub)
                         done()
                     }
                     nbCall++;
@@ -164,13 +169,13 @@ describe ('Stompobservable client', () => {
                     () => done("unexpected")
                 )
             connectCallback()
-            
+
             subscription.unsubscribe()
             Sinon.assert.calledOnce(webSocketHandlerMock.disconnect)
             done()
-            
+
         })
-        
+
         it ('should automatically disconnect after the last unsubscribe', (done) => {
             let nbCall = 0;
             const subscription1 = source.subscribe(
@@ -184,13 +189,13 @@ describe ('Stompobservable client', () => {
                     () => done("unexpected")
                 )
             connectCallback()
-            
+
             subscription1.unsubscribe()
             Sinon.assert.notCalled(webSocketHandlerMock.disconnect)
             subscription2.unsubscribe()
             Sinon.assert.calledOnce(webSocketHandlerMock.disconnect)
             done()
-            
+
         })
 
         it ('should not disconnect after unsubscribe if not connected', (done) => {
@@ -200,11 +205,11 @@ describe ('Stompobservable client', () => {
                     (err) => done("unexpected " + err),
                     () => done("unexpected")
                 )
-            
+
             subscription.unsubscribe()
             Sinon.assert.notCalled(webSocketHandlerMock.disconnect)
             done()
-            
+
         })
 
     })

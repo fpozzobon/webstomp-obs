@@ -78,9 +78,7 @@ class WebSocketHandler {
 
     }
 
-    public initConnection = (headers: ConnectionHeaders,
-                    onDisconnect: (ev: any) => void
-                    ): Observable<void> => {
+    public initConnection = (headers: ConnectionHeaders): Observable<void> => {
 
         return Observable.create((observer: Observer<void>) => {
             if (this.ws) {
@@ -161,8 +159,9 @@ class WebSocketHandler {
                 this._debug(`Whoops! Lost connection to ${this.ws.url}:`, ev);
                 this.heartbeat.stopHeartbeat();
                 this.ws = null;
+                this.connected = false;
                 this.connectionErrorObservable.next(ev);
-                onDisconnect (ev);
+                observer.error(ev);
             };
             this.ws.onopen = () => {
                 this._debug('Web Socket Opened...');
@@ -204,10 +203,10 @@ class WebSocketHandler {
     // [DISCONNECT Frame](http://stomp.github.com/stomp-specification-1.1.html#DISCONNECT)
     public disconnect = (headers: DisconnectHeaders = {}) => {
         this.heartbeat.stopHeartbeat();
-        this.connected = false;
         if (this.ws) {
             this.ws.onclose = null;
-            this._transmit('DISCONNECT', headers);
+            this.connected && this._transmit('DISCONNECT', headers);
+            this.connected = false;
             this.ws.close();
             this.ws = null;
         }

@@ -6,7 +6,13 @@ import { Observable } from 'rxjs/Observable';
 import { ConnectableObservable } from 'rxjs/Observable/ConnectableObservable';
 import { ReplaySubject } from 'rxjs/ReplaySubject';
 import { WsOptions } from './webSocketHandler';
+import 'rxjs/add/observable/timer';
+import 'rxjs/add/observable/of';
 import 'rxjs/add/operator/multicast';
+import 'rxjs/add/operator/retryWhen';
+import 'rxjs/add/operator/scan';
+import 'rxjs/add/operator/do';
+import 'rxjs/add/operator/catch';
 
 export interface IWebSocket {
     binaryType: string,
@@ -34,15 +40,12 @@ class Client {
 
     private wsHandler: WebSocketHandler
     private observableConnection: Observable<ConnectedClient>
-    private nbConnectAttempt: number
-    private connectTimeout: number
     private maxConnectAttempt: number
     private ttlConnectAttempt: number
     private isConnected: boolean
 
     constructor (createWsConnection: () => IWebSocket, options: ClientOptions) {
         this.wsHandler = new WebSocketHandler(createWsConnection, options);
-        this.nbConnectAttempt = 1;
         this.maxConnectAttempt = options.maxConnectAttempt || DEFAULT_MAX_CONNECT_ATTEMPT;
         this.ttlConnectAttempt =  options.ttlConnectAttempt || DEFAULT_TTL_CONNECT_ATTEMPT;
         this.isConnected = false;
@@ -81,28 +84,29 @@ class Client {
     private __initConnectedClient = (headers: ConnectionHeaders,
                           currentObserver: Observer<ConnectedClient>) => {
 
-        clearTimeout(this.connectTimeout)
         // we initialize the connection
-        this.wsHandler.initConnection(headers,
-            (ev: any) => {
-                this.isConnected = false;
-                if (this.maxConnectAttempt === -1 || this.nbConnectAttempt < this.maxConnectAttempt) {
-                    this.connectTimeout = setTimeout (
-                        // when unexpected disconnection happens, we reconnect
-                        () => this.__initConnectedClient(headers,
-                            currentObserver),
-                        this.nbConnectAttempt * this.ttlConnectAttempt
-                    );
-                    this.nbConnectAttempt ++;
-                } else {
-                    currentObserver.error('Attempted to connect ' + this.nbConnectAttempt + ' failed.');
-                }
-            }
-        ).subscribe(() => {
-            this.isConnected = true;
-            this.nbConnectAttempt = 1;
-            currentObserver.next(new ConnectedClient(this.wsHandler));
-        });
+        return this.wsHandler.initConnection(headers)
+            .retryWhen(attemps => attemps.scan( (errorCount, err) => {
+                    // we reinitialize the error count if we were previously connected
+                    if (this.isConnected) {
+                        this.isConnected = false;
+                        errorCount = 0;
+                    }
+                    if (this.maxConnectAttempt !== -1 && errorCount >= this.maxConnectAttempt) {
+                        throw 'Attempted to connect ' + errorCount + ' failed.';
+                    }
+                    return errorCount + 1;
+                }, 1)
+                .do( errorCount => Observable.timer(errorCount * this.ttlConnectAttempt))
+                .catch(error => {
+                    currentObserver.error(error);
+                    return Observable.of(error);
+                })
+            )
+            .subscribe(() => {
+                this.isConnected = true;
+                currentObserver.next(new ConnectedClient(this.wsHandler));
+            });
 
     }
 
