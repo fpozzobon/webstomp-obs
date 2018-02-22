@@ -103,9 +103,10 @@ class Client {
                     return Observable.of(error);
                 })
             )
-            .subscribe(() => {
+            .finally(() => currentObserver.complete())
+            .subscribe(connection => {
                 this.isConnected = true;
-                currentObserver.next(new ConnectedClient(this.wsHandler));
+                currentObserver.next(new ConnectedClient(connection));
             });
 
     }
