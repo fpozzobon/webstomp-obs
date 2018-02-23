@@ -1,11 +1,8 @@
-import { ConnectedClient } from './connectedClient';
-import { ConnectionHeaders } from './headers';
-import WebSocketHandler from './webSocketHandler';
 import { Observer } from 'rxjs/Observer';
 import { Observable } from 'rxjs/Observable';
 import { ConnectableObservable } from 'rxjs/Observable/ConnectableObservable';
 import { ReplaySubject } from 'rxjs/ReplaySubject';
-import { WsOptions } from './webSocketHandler';
+
 import 'rxjs/add/observable/timer';
 import 'rxjs/add/observable/of';
 import 'rxjs/add/operator/multicast';
@@ -13,6 +10,12 @@ import 'rxjs/add/operator/retryWhen';
 import 'rxjs/add/operator/scan';
 import 'rxjs/add/operator/do';
 import 'rxjs/add/operator/catch';
+
+import { ConnectedClient } from './connectedClient';
+import { ConnectionHeaders } from './headers';
+import WebSocketHandler from './webSocketHandler';
+import { WsOptions } from './webSocketHandler';
+import stompWebSocketHandler from './protocol/stomp/stompWebSocketHandler';
 
 export interface IWebSocket {
     binaryType: string,
@@ -43,8 +46,10 @@ class Client {
     private maxConnectAttempt: number
     private ttlConnectAttempt: number
     private isConnected: boolean
+    private options: ClientOptions
 
     constructor (createWsConnection: () => IWebSocket, options: ClientOptions) {
+        this.options = options;
         this.wsHandler = new WebSocketHandler(createWsConnection, options);
         this.maxConnectAttempt = options.maxConnectAttempt || DEFAULT_MAX_CONNECT_ATTEMPT;
         this.ttlConnectAttempt =  options.ttlConnectAttempt || DEFAULT_TTL_CONNECT_ATTEMPT;
@@ -85,29 +90,32 @@ class Client {
                           currentObserver: Observer<ConnectedClient>) => {
 
         // we initialize the connection
-        return this.wsHandler.initConnection(headers)
-            .retryWhen(attemps => attemps.scan( (errorCount, err) => {
-                    // we reinitialize the error count if we were previously connected
-                    if (this.isConnected) {
-                        this.isConnected = false;
-                        errorCount = 0;
-                    }
-                    if (this.maxConnectAttempt !== -1 && errorCount >= this.maxConnectAttempt) {
-                        throw 'Attempted to connect ' + errorCount + ' failed.';
-                    }
-                    return errorCount + 1;
-                }, 1)
-                .do( errorCount => Observable.timer(errorCount * this.ttlConnectAttempt))
-                .catch(error => {
-                    currentObserver.error(error);
-                    return Observable.of(error);
-                })
-            )
-            .finally(() => currentObserver.complete())
-            .subscribe(connection => {
-                this.isConnected = true;
-                currentObserver.next(new ConnectedClient(connection));
-            });
+        return stompWebSocketHandler(this.wsHandler,
+                                      headers,
+                                      this.options.heartbeat,
+                                      this.wsHandler.debug)
+                .retryWhen(attemps => attemps.scan( (errorCount, err) => {
+                        // we reinitialize the error count if we were previously connected
+                        if (this.isConnected) {
+                            this.isConnected = false;
+                            errorCount = 0;
+                        }
+                        if (this.maxConnectAttempt !== -1 && errorCount >= this.maxConnectAttempt) {
+                            throw 'Attempted to connect ' + errorCount + ' failed.';
+                        }
+                        return errorCount + 1;
+                    }, 1)
+                    .do( errorCount => Observable.timer(errorCount * this.ttlConnectAttempt))
+                    .catch(error => {
+                        currentObserver.error(error);
+                        return Observable.of(error);
+                    })
+                )
+                .finally(() => currentObserver.complete())
+                .subscribe(connection => {
+                    this.isConnected = true;
+                    currentObserver.next(new ConnectedClient(connection));
+                });
 
     }
 

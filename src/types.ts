@@ -1,5 +1,8 @@
+import { Observable } from 'rxjs/Observable';
+import { Subject } from 'rxjs/Subject';
+
 import Frame from './frame';
-import { AckHeaders, NackHeaders,
+import { ACK, AckHeaders, NackHeaders,
          ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
          SubscribeHeaders, UnsubscribeHeaders } from './headers';
 
@@ -7,10 +10,17 @@ export interface IEvent {
     data: any;
 }
 
-export interface IProtocolHandler {
-    parseMessageReceived: (evt: IEvent) => Frame[];
-    connect: (headers: ConnectionHeaders) => any;
-    disconnect: (headers: DisconnectHeaders) => any;
+export interface IWebSocketObservable {
+   messageReceived: Observable<IEvent>;
+   messageSender: Subject<any>;
+   closeConnection: () => void;
+}
+
+export interface IProtocol {
+    getMessageId: (frame: Frame) => string,
+    getSubscription: (frame: Frame) => string,
+    connect: (headers: ConnectionHeaders) => any,
+    disconnect: (headers: DisconnectHeaders) => any,
     send: (headers: any, body: any) => any;
     begin: (transaction: any) => any;
     commit: (transaction: string) => any;
@@ -19,8 +29,12 @@ export interface IProtocolHandler {
     nack: (messageID: string, subscription: string, headers?: NackHeaders) => any;
     subscribe: (headers: SubscribeHeaders) => any;
     unSubscribe: (headers: UnsubscribeHeaders) => any;
-    handleFrame: (onConnected: (headers: ConnectedHeaders) => void,
-                  onReceived: (frame: Frame, messageID: string, subscription: string) => void,
-                  onReceipt: (frame: Frame) => void,
-                  onError: (frame: Frame) => void) => (frame: Frame) => void;
+}
+
+export interface IConnectedObservable {
+    messageReceipted: Observable<Frame>;
+    errorReceived: Observable<Frame>;
+    subscribeTo: (destination: string, headers: {id?: string, ack?: ACK}) => Observable<Frame>;
+    messageSender: Subject<any>;
+    protocol: IProtocol;
 }

@@ -2,12 +2,13 @@ import { Observer } from 'rxjs/Observer';
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
 import { ConnectableObservable } from 'rxjs/Observable/ConnectableObservable';
-import { IConnectedObservable } from './webSocketHandler';
-import Frame from './frame';
-import { ACK, AckHeaders, SendHeaders, SubscribeHeaders } from './headers';
 import 'rxjs/add/operator/multicast';
 import 'rxjs/add/operator/finally';
 import 'rxjs/add/operator/filter';
+
+import { IConnectedObservable } from './types';
+import Frame from './frame';
+import { ACK, AckHeaders, SendHeaders, SubscribeHeaders } from './headers';
 
 interface ISubscriptions {
     [key: string]: Observer<Frame>;
@@ -35,37 +36,34 @@ export class ConnectedClient {
     constructor(connection: IConnectedObservable) {
 
         this.connection = connection;
-
-        // used to index subscribers
-        this.counter = 0;
         // subscription callbacks indexed by subscriber's ID
         this.broadcastSubscribers = {};
     }
 
     public send = (destination: string, body: string = '', headers: SendHeaders = {destination}): void => {
         const headerToSend = { ...headers, destination};
-        this.connection.messageSender.next(this.connection.protocolHandler.send(headerToSend, body));
+        this.connection.messageSender.next(this.connection.protocol.send(headerToSend, body));
     }
 
     public begin = (transaction?: string) => {
-        this.connection.messageSender.next(this.connection.protocolHandler.begin(transaction));
+        this.connection.messageSender.next(this.connection.protocol.begin(transaction));
     }
 
     public commit = (transaction: string) => {
-        this.connection.messageSender.next(this.connection.protocolHandler.commit(transaction));
+        this.connection.messageSender.next(this.connection.protocol.commit(transaction));
     }
 
     public abort = (transaction: string) => {
-        this.connection.messageSender.next(this.connection.protocolHandler.abort(transaction));
+        this.connection.messageSender.next(this.connection.protocol.abort(transaction));
     }
 
     public ack = (messageID: string, subscription: string, headers?: AckHeaders) => {
-        this.connection.messageSender.next(this.connection.protocolHandler.ack(messageID, subscription, headers));
+        this.connection.messageSender.next(this.connection.protocol.ack(messageID, subscription, headers));
     }
 
     // [NACK Frame](http://stomp.github.com/stomp-specification-1.1.html#NACK)
     public nack = (messageID: string, subscription: string, headers?: AckHeaders) => {
-        this.connection.messageSender.next(this.connection.protocolHandler.nack(messageID, subscription, headers));
+        this.connection.messageSender.next(this.connection.protocol.nack(messageID, subscription, headers));
     }
 
     // [RECEIPT Frame](http://stomp.github.com/stomp-specification-1.1.html#RECEIPT)
@@ -119,11 +117,7 @@ export class ConnectedClient {
     // subscribe to a destination
     // return an Observable which you can unsubscribe
     public subscribe = (destination: string, headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
-        const id = headers.id || 'sub-' + this.counter++;
-        const currentHeader: SubscribeHeaders = {destination, ack: headers.ack, id };
-        return this.connection.subscribeTo(currentHeader).filter(
-          (frame: Frame) => frame.headers.subscription === id
-        );
+        return this.connection.subscribeTo(destination, headers);
     }
 
     // subscribe to a destination only once for multiple subscribers

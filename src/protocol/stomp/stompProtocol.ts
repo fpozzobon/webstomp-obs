@@ -1,87 +1,27 @@
-import { IEvent, IProtocolHandler } from '../../types';
 import Frame from '../../frame';
 import { AckHeaders, NackHeaders,
          ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
          SubscribeHeaders, UnsubscribeHeaders } from '../../headers';
-import { VERSIONS, BYTES, typedArrayToUnicodeString } from '../../utils';
+import { VERSIONS } from '../../utils';
+import { IProtocol } from '../../types';
 
 
-// STOMP Handler Class
-//
-// All STOMP protocol is exposed as methods of this class ('connect()',
-// 'send()', etc.)
-const stompHandler = (debug: (msg: any) => void): IProtocolHandler => {
+// STOMP protocol with the version in parameter
+const stompProtocol = (version?: string): IProtocol => {
 
-    let partialData: string = '';
-    let version: string = '';
     let counter = 0;
 
-    const parseMessageReceived = (evt: IEvent): Frame[] => {
-        let data = evt.data;
-        if (evt.data instanceof ArrayBuffer) {
-            data = typedArrayToUnicodeString(new Uint8Array(evt.data))
-        }
-
-        // heartbeat
-        if (data === BYTES.LF) {
-            debug(`<<< PONG`);
-            return;
-        }
-        debug(`<<< ${data}`);
-        // Handle STOMP frames received from the server
-        // The unmarshall function returns the frames parsed and any remaining
-        // data from partial frames are buffered.
-        const unmarshalledData = Frame.unmarshall(partialData + data);
-        partialData = unmarshalledData.partial;
-
-        return unmarshalledData.frames;
+    const getMessageId = (frame: Frame): string => {
+        return version === VERSIONS.V1_2 &&
+            frame.headers.ack ||
+            frame.headers['message-id'];
     }
 
-
-    const handleFrame = (onConnected: (headers: ConnectedHeaders) => void,
-                         onReceived: (frame: Frame, messageID: string, subscription: string) => void,
-                         onReceipt: (frame: Frame) => void,
-                         onError: (frame: Frame) => void) => {
-        return (frame: Frame): void => {
-            switch (frame.command) {
-                // [CONNECTED Frame](http://stomp.github.com/stomp-specification-1.1.html#CONNECTED_Frame)
-                case 'CONNECTED':
-                    version = frame.headers.version;
-                    onConnected(frame.headers);
-                    break;
-                // [MESSAGE Frame](http://stomp.github.com/stomp-specification-1.1.html#MESSAGE)
-                case 'MESSAGE':
-                    // 1.2 define ack header if ack is set to client
-                    // and this header must be used for ack/nack
-                    const subscription: string = frame.headers.subscription
-                    const messageID: string = version === VERSIONS.V1_2 &&
-                        frame.headers.ack ||
-                        frame.headers['message-id'];
-                    onReceived(frame, messageID, subscription);
-                    break;
-                // [RECEIPT Frame](http://stomp.github.com/stomp-specification-1.1.html#RECEIPT)
-                //
-                // The client instance can set its 'onreceipt' field to a function taking
-                // a frame argument that will be called when a receipt is received from
-                // the server:
-                //
-                //     client.onreceipt = function(frame) {
-                //       receiptID = frame.headers['receipt-id'];
-                //       ...
-                //     }
-                case 'RECEIPT':
-                    onReceipt(frame);
-                    break;
-                // [ERROR Frame](http://stomp.github.com/stomp-specification-1.1.html#ERROR)
-                case 'ERROR':
-                    onError(frame);
-                    break;
-                default:
-                    debug(`Unhandled frame: ${frame}`);
-            }
-        }
+    const getSubscription = (frame: Frame): string => {
+        return frame.headers.subscription;
     }
 
+    // [CONNECTED Frame](http://stomp.github.com/stomp-specification-1.1.html#CONNECTED_Frame)
     const connect = (headers: ConnectionHeaders): any => {
         headers['accept-version'] = VERSIONS.supportedVersions();
         return Frame.marshall('CONNECT', headers as any);
@@ -201,8 +141,8 @@ const stompHandler = (debug: (msg: any) => void): IProtocolHandler => {
         return Frame.marshall('UNSUBSCRIBE', headers as any);
     }
 
-    return {parseMessageReceived, handleFrame, connect, disconnect, send, begin, commit, abort, ack, nack, subscribe, unSubscribe};
+    return {getMessageId, getSubscription, connect, disconnect, send, begin, commit, abort, ack, nack, subscribe, unSubscribe};
 
 }
 
-export default stompHandler
+export default stompProtocol
