@@ -8,7 +8,7 @@ import Frame from './frame';
 import { IWebSocket } from './client';
 import { ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
          SubscribeHeaders, UnsubscribeHeaders } from './headers';
-import { unicodeStringToTypedArray } from './utils';
+import { unicodeStringToTypedArray, logger } from './utils';
 import { HeartbeatOptions } from './heartbeat';
 
 
@@ -31,7 +31,6 @@ class WebSocketHandler {
 
     private ws: IWebSocket
     private isBinary: boolean
-    private hasDebug: boolean
     private connected: boolean
     private maxWebSocketFrameSize: number
     private createWS: Function
@@ -39,8 +38,7 @@ class WebSocketHandler {
     constructor(createWsConnection: () => IWebSocket, options: WsOptions) {
 
         // cannot have default options object + destructuring in the same time in method signature
-        let {binary = false, debug = false} = options;
-        this.hasDebug = !!debug;
+        let {binary = false} = options;
 
         this.createWS = createWsConnection;
 
@@ -71,10 +69,10 @@ class WebSocketHandler {
             const messageSender = new Subject()
             let inputSubscription: AnonymousSubscription
 
-            this.debug('Opening Web Socket...');
+            logger.debug('Opening Web Socket...');
 
             this.ws.onopen = () => {
-                this.debug('Web Socket Opened...');
+                logger.debug('Web Socket Opened...');
                 inputSubscription = messageSender.subscribe(this._send)
                 webSocketObserver.next({messageReceived, messageSender, closeConnection: () => this.ws.close()});
             };
@@ -84,7 +82,7 @@ class WebSocketHandler {
             };
 
             this.ws.onclose = (ev: CloseEvent) => {
-                this.debug(`Whoops! Lost connection to ${this.ws.url}:`, ev);
+                logger.debug(`Whoops! Lost connection to ${this.ws.url}:`, ev);
                 this.ws = null;
                 webSocketObserver.error(ev);
             };
@@ -113,28 +111,24 @@ class WebSocketHandler {
         if (!this.ws) {
             throw 'Error, this.ws is null ! Possibly initConnection has not been called or not subscribed !';
         }
-        this.debug(`>>> ${data}`);
+        logger.debug(`>>> ${data}`);
         this._wsSend(this.ws, data);
     }
 
     private _wsSend = (ws: IWebSocket, data: any) => {
         if (this.isBinary) data = unicodeStringToTypedArray(data);
-        this.debug(`>>> length ${data.length}`);
+        logger.debug(`>>> length ${data.length}`);
         // if necessary, split the *STOMP* frame to send it on many smaller
         // *IWebSocket* frames
         while (true) {
             if (data.length > this.maxWebSocketFrameSize) {
                 ws.send(data.slice(0, this.maxWebSocketFrameSize));
                 data = data.slice(this.maxWebSocketFrameSize);
-                this.debug(`remaining = ${data.length}`);
+                logger.debug(`remaining = ${data.length}`);
             } else {
                 return ws.send(data);
             }
         }
-    }
-
-    public debug = (message: any, ...args: any[]) => {
-        if (this.hasDebug) console.log(message, ...args);
     }
 
 }

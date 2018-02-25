@@ -6,6 +6,10 @@ import { ACK, AckHeaders, NackHeaders,
          ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
          SubscribeHeaders, UnsubscribeHeaders } from './headers';
 
+export interface IWebSocketHandler<T> {
+  initConnection: (headers: ConnectionHeaders) => Observable<T>;
+}
+
 export interface IEvent {
     data: any;
 }

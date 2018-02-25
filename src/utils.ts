@@ -45,3 +45,20 @@ export function sizeOfUTF8(s: string): number {
     if (!s) return 0;
     return encodeURIComponent(s).match(/%..|./g).length;
 }
+
+export class Log  {
+
+    hasDebug: boolean = false;
+
+    public setDebug = (_hasDebug: boolean) => {
+        this.hasDebug = _hasDebug;
+    }
+
+    public debug = (message: any, ...args: any[]) => {
+        if (this.hasDebug) console.log(message, ...args);
+    }
+
+}
+
+const logger = new Log();
+export { logger };

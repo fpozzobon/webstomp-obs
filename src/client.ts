@@ -16,6 +16,7 @@ import { ConnectionHeaders } from './headers';
 import WebSocketHandler from './webSocketHandler';
 import { WsOptions } from './webSocketHandler';
 import stompWebSocketHandler from './protocol/stomp/stompWebSocketHandler';
+import { IWebSocketHandler, IConnectedObservable } from './types';
 
 export interface IWebSocket {
     binaryType: string,
@@ -42,15 +43,16 @@ const DEFAULT_TTL_CONNECT_ATTEMPT: number = 1000
 class Client {
 
     private wsHandler: WebSocketHandler
+    private stompWebSockerHandler: IWebSocketHandler<IConnectedObservable>
     private observableConnection: Observable<ConnectedClient>
     private maxConnectAttempt: number
     private ttlConnectAttempt: number
     private isConnected: boolean
-    private options: ClientOptions
 
     constructor (createWsConnection: () => IWebSocket, options: ClientOptions) {
-        this.options = options;
         this.wsHandler = new WebSocketHandler(createWsConnection, options);
+        this.stompWebSockerHandler = stompWebSocketHandler(this.wsHandler,
+                                                          options.heartbeat);
         this.maxConnectAttempt = options.maxConnectAttempt || DEFAULT_MAX_CONNECT_ATTEMPT;
         this.ttlConnectAttempt =  options.ttlConnectAttempt || DEFAULT_TTL_CONNECT_ATTEMPT;
         this.isConnected = false;
@@ -90,10 +92,7 @@ class Client {
                           currentObserver: Observer<ConnectedClient>) => {
 
         // we initialize the connection
-        return stompWebSocketHandler(this.wsHandler,
-                                      headers,
-                                      this.options.heartbeat,
-                                      this.wsHandler.debug)
+        return this.stompWebSockerHandler.initConnection(headers)
                 .retryWhen(attemps => attemps.scan( (errorCount, err) => {
                         // we reinitialize the error count if we were previously connected
                         if (this.isConnected) {

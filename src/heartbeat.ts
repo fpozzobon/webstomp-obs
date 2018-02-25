@@ -1,6 +1,6 @@
 import { IWebSocket } from './client';
 import { ConnectedHeaders } from './headers';
-import { VERSIONS, BYTES } from './utils';
+import { VERSIONS, BYTES, logger } from './utils';
 
 export interface HeartbeatOptions {
     outgoing: number,
@@ -8,18 +8,15 @@ export interface HeartbeatOptions {
 }
 
 class Heartbeat {
-    
+
     private heartbeatSettings: HeartbeatOptions;
 
     private pinger: any;
     private ponger: any;
     private lastServerActivity: number;
 
-    private debug?: (message: any, ...args: any[]) => void;
-
-    constructor(heartbeatSettings: HeartbeatOptions, debug?: (message: any, ...args: any[])=> void) {
+    constructor(heartbeatSettings: HeartbeatOptions) {
         this.heartbeatSettings = heartbeatSettings;
-        this.debug = debug;
     }
 
     // Heart-beat negotiation
@@ -53,30 +50,26 @@ class Heartbeat {
     public activityFromServer = () => {
         this.lastServerActivity = Date.now();
     }
-    
+
     private _startPinger = (ttl: number, send: (data: any) => any) => {
-        this._debug(`send PING every ${ttl}ms`);
+        logger.debug(`send PING every ${ttl}ms`);
         this.pinger = setInterval(() => {
             send(BYTES.LF);
-            this._debug('>>> PING');
+            logger.debug('>>> PING');
         }, ttl);
     }
-    
+
     private _startPonger = (ttl: number, close: Function) => {
-        this._debug(`check PONG every ${ttl}ms`);
+        logger.debug(`check PONG every ${ttl}ms`);
         this.lastServerActivity = Date.now();
         this.ponger = setInterval(() => {
             const delta = Date.now() - this.lastServerActivity;
             // We wait twice the TTL to be flexible on window's setInterval calls
             if (delta > ttl * 2) {
-                this._debug(`did not receive server activity for the last ${delta}ms`);
+                logger.debug(`did not receive server activity for the last ${delta}ms`);
                 close();
             }
         }, ttl);
-    }
-
-    private _debug = (message: any, ...args: any[]) => {
-        this.debug && this.debug(message, args);
     }
 
 }
