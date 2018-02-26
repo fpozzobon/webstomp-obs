@@ -13,8 +13,8 @@
     <div class="wrapper">
         <div data-info>Connecting...</div>
         <button data-add disabled>Add line</button><button data-push disabled>Push task</button>
-
         <ul data-lines></ul>
+        <button data-disconnect>Disconnect</button>
     </div>
 
     <script type="text/javascript" src="../dist/webstompobs.js"></script>
@@ -34,6 +34,7 @@
             var linesNode = document.querySelector('[data-lines]');
             var addBtn = document.querySelector('[data-add]');
             var pushBtn = document.querySelector('[data-push]');
+            var disconnectBtn = document.querySelector('[data-disconnect]');
 
 
             function toggleButtons(enable) {
@@ -96,7 +97,7 @@
             addBtn.addEventListener('click', onAddLine);
             pushBtn.addEventListener('click', onPush);
 
-            globalClient.connect({login: login, passcode: password}).subscribe(
+            var globalSubscription = globalClient.connect({login: login, passcode: password}).subscribe(
             function (connectedClient) {
                 onConnect(connectedClient)
             },
@@ -106,6 +107,11 @@
             function () {
                 console.log('Completed');
             });
+
+            function onDisconnect() {
+                globalSubscription.unsubscribe();
+            }
+            disconnectBtn.addEventListener('click', onDisconnect);
 
         });
     </script>

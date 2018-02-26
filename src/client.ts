@@ -5,6 +5,7 @@ import { ReplaySubject } from 'rxjs/ReplaySubject';
 
 import 'rxjs/add/observable/timer';
 import 'rxjs/add/observable/of';
+import 'rxjs/add/observable/throw';
 import 'rxjs/add/operator/multicast';
 import 'rxjs/add/operator/retryWhen';
 import 'rxjs/add/operator/scan';
@@ -75,21 +76,16 @@ class Client {
     }
 
     private __connect = (headers: ConnectionHeaders): Observable<ConnectedClient> => {
-
-        return Observable.create(
-            (observer: Observer<ConnectedClient>) => {
-                // we initialize only once the connection
-                this.__initConnectedClient( headers, observer)
-                // when unsubscribe, we disconnect the websocket
-                return () => {
-                    this.isConnected && this.wsHandler.disconnect();
-                }
-            })
-
+        return this.__initConnectedClient(headers).switchMap((connection: IConnectedObservable) => {
+            this.isConnected = true;
+            return Observable.of(new ConnectedClient(connection));
+        })
+        .catch(error => {
+            return Observable.throw(error);
+        });
     }
 
-    private __initConnectedClient = (headers: ConnectionHeaders,
-                          currentObserver: Observer<ConnectedClient>) => {
+    private __initConnectedClient = (headers: ConnectionHeaders) => {
 
         // we initialize the connection
         return this.stompWebSockerHandler.initConnection(headers)
@@ -105,16 +101,7 @@ class Client {
                         return errorCount + 1;
                     }, 1)
                     .do( errorCount => Observable.timer(errorCount * this.ttlConnectAttempt))
-                    .catch(error => {
-                        currentObserver.error(error);
-                        return Observable.of(error);
-                    })
-                )
-                .finally(() => currentObserver.complete())
-                .subscribe(connection => {
-                    this.isConnected = true;
-                    currentObserver.next(new ConnectedClient(connection));
-                });
+                );
 
     }
 
