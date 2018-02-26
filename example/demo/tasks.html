@@ -27,6 +27,7 @@
                     currentConnectedClient;
 
             var globalClient = webstompobs.default.client(url, {maxConnectAttempt: 10})
+            var globalSubscription = []
 
             var tasks = lines = 0;
 
@@ -56,7 +57,7 @@
                 linesNode.appendChild(line);
                 var currentLine = lines-1;
 
-                globalClient.connect({login: login, passcode: password}).subscribe(
+                var cnxSub = globalClient.connect({login: login, passcode: password}).subscribe(
                     function (connectedClient) {
                         var source = connectedClient.subscribe('webstompobservable-tasks-example');
 
@@ -79,6 +80,7 @@
                         console.log('Completed');
                     }
                 );
+                globalSubscription.push(cnxSub)
 
             }
             function onPush() {
@@ -97,7 +99,7 @@
             addBtn.addEventListener('click', onAddLine);
             pushBtn.addEventListener('click', onPush);
 
-            var globalSubscription = globalClient.connect({login: login, passcode: password}).subscribe(
+            var cnxSub = globalClient.connect({login: login, passcode: password}).subscribe(
             function (connectedClient) {
                 onConnect(connectedClient)
             },
@@ -107,9 +109,11 @@
             function () {
                 console.log('Completed');
             });
+            globalSubscription.push(cnxSub)
 
             function onDisconnect() {
-                globalSubscription.unsubscribe();
+                globalSubscription.forEach(sub => sub.unsubscribe());
+                globalSubscription = [];
             }
             disconnectBtn.addEventListener('click', onDisconnect);
 

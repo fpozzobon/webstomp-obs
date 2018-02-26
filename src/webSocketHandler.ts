@@ -109,7 +109,8 @@ class WebSocketHandler {
     // Base method to transmit any stomp frame
     private _send = (data: any) => {
         if (!this.ws) {
-            throw 'Error, this.ws is null ! Possibly initConnection has not been called or not subscribed !';
+            logger.debug('Error, this.ws is null ! Possibly initConnection has not been called or not subscribed !');
+            return;
         }
         logger.debug(`>>> ${data}`);
         this._wsSend(this.ws, data);

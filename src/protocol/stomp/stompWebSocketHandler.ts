@@ -28,6 +28,8 @@ const stompWebSocketHandler = (wsHandler: WebSocketHandler,
 
     const initConnection = (headers: ConnectionHeaders): Observable<IConnectedObservable> => {
 
+        let disconnectFn;
+
         return wsHandler.initConnection(headers).switchMap((wsConnection: IWebSocketObservable) => {
 
             let counter: number = 0;
@@ -129,17 +131,22 @@ const stompWebSocketHandler = (wsHandler: WebSocketHandler,
                 // sending connect
                 wsConnection.messageSender.next(currentProtocol.connect(headers));
 
-                return () => {
+                disconnectFn = () => {
                       heartbeat.stopHeartbeat();
                       wsConnection.messageSender.next(currentProtocol.disconnect(headers));
-                      msgSubscription && msgSubscription.unsubscribe();
-                      stompMessageReceived.complete();
-                      stompMessageReceipted.complete();
-                      errorReceived.complete();
+                }
+
+                return () => {
+                    msgSubscription && msgSubscription.unsubscribe();
+                    stompMessageReceived.complete();
+                    stompMessageReceipted.complete();
+                    errorReceived.complete();
                 }
 
             })
 
+        }).finally(() => {
+            disconnectFn && disconnectFn();
         })
     }
 
