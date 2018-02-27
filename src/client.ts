@@ -43,7 +43,6 @@ const DEFAULT_TTL_CONNECT_ATTEMPT: number = 1000
 // 'send()', etc.)
 class Client {
 
-    private wsHandler: WebSocketHandler
     private stompWebSockerHandler: IWebSocketHandler<IConnectedObservable>
     private observableConnection: Observable<ConnectedClient>
     private maxConnectAttempt: number
@@ -51,8 +50,8 @@ class Client {
     private isConnected: boolean
 
     constructor (createWsConnection: () => IWebSocket, options: ClientOptions) {
-        this.wsHandler = new WebSocketHandler(createWsConnection, options);
-        this.stompWebSockerHandler = stompWebSocketHandler(this.wsHandler,
+        const wsHandler: WebSocketHandler = new WebSocketHandler(createWsConnection, options);
+        this.stompWebSockerHandler = stompWebSocketHandler(wsHandler,
                                                           options.heartbeat);
         this.maxConnectAttempt = options.maxConnectAttempt || DEFAULT_MAX_CONNECT_ATTEMPT;
         this.ttlConnectAttempt =  options.ttlConnectAttempt || DEFAULT_TTL_CONNECT_ATTEMPT;
