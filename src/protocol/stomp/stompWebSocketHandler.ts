@@ -32,17 +32,15 @@ const stompWebSocketHandler = (wsHandler: WebSocketHandler,
 
         return wsHandler.initConnection(headers).switchMap((wsConnection: IWebSocketObservable) => {
 
+            // Check if we already have heart-beat in headers before adding them
+            if (!headers['heart-beat']) {
+                headers['heart-beat'] = [heartbeatSettings.outgoing, heartbeatSettings.incoming].join(',');
+            }
+
             let counter: number = 0;
             let partialData: string = '';
             let version: string = '';
             let currentProtocol: IProtocol = stompProtocol(); // we initialise the current protocol with no version as we need it for CONNECT
-
-            // Heart-beat negotiation
-            const _setupHeartbeat = (_headers: ConnectedHeaders) => {
-                const send = (data: any) => wsConnection.messageSender.next(data);
-                heartbeat.startHeartbeat(_headers,
-                                            { send: wsConnection.messageSender.next, close: wsConnection.closeConnection});
-            }
 
             const _parseMessageReceived = (evt: IEvent): Frame[] => {
                 let data = evt.data;
@@ -95,11 +93,15 @@ const stompWebSocketHandler = (wsHandler: WebSocketHandler,
                                     version = frame.headers.version;
                                     currentProtocol = stompProtocol(version);
                                     logger.debug(`connected to server ${frame.headers.server}`);
-                                    // Check if we already have heart-beat in headers before adding them
-                                    if (!frame.headers['heart-beat']) {
-                                        frame.headers['heart-beat'] = [heartbeatSettings.outgoing, heartbeatSettings.incoming].join(',');
-                                    }
-                                    _setupHeartbeat(frame.headers);
+
+                                    // Heart-beat negotiation
+                                    const send = (data: any) => wsConnection.messageSender.next(data);
+                                    heartbeat.startHeartbeat(frame.headers,
+                                                                {
+                                                                    send: (frame) => wsConnection.messageSender.next(frame),
+                                                                    close: (error) => connectionObserver.error(error)
+                                                                });
+
                                     connectionObserver.next({
                                             subscribeTo: subscribeTo,
                                             messageReceipted: stompMessageReceipted,

@@ -17,7 +17,6 @@ export interface IEvent {
 export interface IWebSocketObservable {
    messageReceived: Observable<IEvent>;
    messageSender: Subject<any>;
-   closeConnection: () => void;
 }
 
 export interface IProtocol {

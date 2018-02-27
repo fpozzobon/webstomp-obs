@@ -74,7 +74,7 @@ class WebSocketHandler {
             this.ws.onopen = () => {
                 logger.debug('Web Socket Opened...');
                 inputSubscription = messageSender.subscribe(this._send)
-                webSocketObserver.next({messageReceived, messageSender, closeConnection: () => this.ws.close()});
+                webSocketObserver.next({messageReceived, messageSender});
             };
 
             this.ws.onmessage = (evt: IEvent) => {
