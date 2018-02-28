@@ -5,8 +5,7 @@ import { AnonymousSubscription } from 'rxjs/Subscription'
 
 import { IEvent, IWebSocketObservable, WsOptions, IWebSocket } from './types';
 import Frame from './frame';
-import { ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
-         SubscribeHeaders, UnsubscribeHeaders } from './headers';
+import { ConnectionHeaders, DisconnectHeaders } from './headers';
 import { unicodeStringToTypedArray, logger } from './utils';
 
 

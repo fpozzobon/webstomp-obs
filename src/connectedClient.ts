@@ -2,13 +2,13 @@ import { Observer } from 'rxjs/Observer';
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
 import { ConnectableObservable } from 'rxjs/Observable/ConnectableObservable';
+
 import 'rxjs/add/operator/multicast';
 import 'rxjs/add/operator/finally';
-import 'rxjs/add/operator/filter';
 
 import { IConnectedObservable } from './types';
 import Frame from './frame';
-import { ACK, AckHeaders, SendHeaders, SubscribeHeaders } from './headers';
+import { ACK, AckHeaders, SendHeaders } from './headers';
 
 interface ISubscriptions {
     [key: string]: Observer<Frame>;

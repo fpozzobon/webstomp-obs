@@ -6,10 +6,8 @@ import 'rxjs/add/operator/switchMap';
 
 import { IEvent, IProtocol, IConnectedObservable, IWebSocketObservable, IWebSocketHandler, WsOptions, IWebSocket } from '../../types';
 import Frame from '../../frame';
-import { ACK, AckHeaders, NackHeaders,
-         ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
-         SubscribeHeaders, UnsubscribeHeaders } from '../../headers';
-import { VERSIONS, BYTES, typedArrayToUnicodeString, logger } from '../../utils';
+import { ACK, ConnectionHeaders, SubscribeHeaders, UnsubscribeHeaders } from '../../headers';
+import { VERSIONS, typedArrayToUnicodeString, logger } from '../../utils';
 import WebSocketHandler from '../../webSocketHandler';
 import stompProtocol from './stompProtocol';
 import Heartbeat from '../../heartbeat';
@@ -49,7 +47,7 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                 }
 
                 // heartbeat
-                if (data === BYTES.LF) {
+                if (data === currentProtocol.ping()) {
                     logger.debug(`<<< PONG`);
                     return;
                 }
@@ -94,13 +92,17 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                                     currentProtocol = stompProtocol(version);
                                     logger.debug(`connected to server ${frame.headers.server}`);
 
-                                    // Heart-beat negotiation
-                                    const send = (data: any) => wsConnection.messageSender.next(data);
-                                    heartbeat.startHeartbeat(frame.headers,
+                                    // we start heartbeat only if the protocol is not version 1.0
+                                    const pingMsg = currentProtocol.ping();
+                                    if (pingMsg) {
+                                        const [serverOutgoing, serverIncoming] = (frame.headers['heart-beat'] || '0,0').split(',').map((v: string) => parseInt(v, 10));
+                                        heartbeat.startHeartbeat(serverOutgoing,
+                                                                 serverIncoming,
                                                                 {
-                                                                    send: (frame) => wsConnection.messageSender.next(frame),
+                                                                    sendPing: () => wsConnection.messageSender.next(pingMsg),
                                                                     close: (error) => connectionObserver.error(error)
                                                                 });
+                                    }
 
                                     connectionObserver.next({
                                             subscribeTo: subscribeTo,

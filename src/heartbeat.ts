@@ -1,5 +1,5 @@
-import { ConnectedHeaders } from './headers';
-import { VERSIONS, BYTES, logger } from './utils';
+
+import { logger } from './utils';
 
 export interface HeartbeatOptions {
     outgoing: number,
@@ -19,20 +19,19 @@ class Heartbeat {
     }
 
     // Heart-beat negotiation
-    public startHeartbeat = ( headers: ConnectedHeaders,
-                              callback: { send: (data: any) => any,
+    public startHeartbeat = ( serverOutgoing: number,
+                              serverIncoming: number,
+                              callback: { sendPing: () => void,
                                           close: Function}) => {
         this.stopHeartbeat();
-        if (headers.version !== VERSIONS.V1_1 && headers.version !== VERSIONS.V1_2) return;
 
         // heart-beat header received from the server looks like:
         //
         //     heart-beat: sx, sy
-        const [serverOutgoing, serverIncoming] = (headers['heart-beat'] || '0,0').split(',').map((v: string) => parseInt(v, 10));
 
         if (!(this.heartbeatSettings.outgoing === 0 || serverIncoming === 0)) {
             const ttl = Math.min(this.heartbeatSettings.outgoing, serverIncoming);
-            this._startPinger(ttl, callback.send);
+            this._startPinger(ttl, callback.sendPing);
         }
 
         if (!(this.heartbeatSettings.incoming === 0 || serverOutgoing === 0)) {
@@ -50,10 +49,10 @@ class Heartbeat {
         this.lastServerActivity = Date.now();
     }
 
-    private _startPinger = (ttl: number, send: (data: any) => any) => {
+    private _startPinger = (ttl: number, sendPing: () => void) => {
         logger.debug(`send PING every ${ttl}ms`);
         this.pinger = setInterval(() => {
-            send(BYTES.LF);
+            sendPing();
             logger.debug('>>> PING');
         }, ttl);
     }

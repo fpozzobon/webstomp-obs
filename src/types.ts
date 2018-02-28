@@ -3,8 +3,7 @@ import { Subject } from 'rxjs/Subject';
 
 import Frame from './frame';
 import { ACK, AckHeaders, NackHeaders,
-         ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
-         SubscribeHeaders, UnsubscribeHeaders } from './headers';
+         ConnectionHeaders, DisconnectHeaders, SubscribeHeaders, UnsubscribeHeaders } from './headers';
 import { HeartbeatOptions } from './heartbeat';
 
 export interface IWebSocketHandler<T> {
@@ -33,6 +32,7 @@ export interface IProtocol {
     nack: (messageID: string, subscription: string, headers?: NackHeaders) => any;
     subscribe: (headers: SubscribeHeaders) => any;
     unSubscribe: (headers: UnsubscribeHeaders) => any;
+    ping: () => any;
 }
 
 export interface IConnectedObservable {

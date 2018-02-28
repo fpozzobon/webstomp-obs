@@ -1,8 +1,7 @@
 import Frame from '../../frame';
 import { AckHeaders, NackHeaders,
-         ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
-         SubscribeHeaders, UnsubscribeHeaders } from '../../headers';
-import { VERSIONS } from '../../utils';
+         ConnectionHeaders, DisconnectHeaders, SubscribeHeaders, UnsubscribeHeaders } from '../../headers';
+import { VERSIONS, BYTES } from '../../utils';
 import { IProtocol } from '../../types';
 
 
@@ -141,7 +140,11 @@ const stompProtocol = (version?: string): IProtocol => {
         return Frame.marshall('UNSUBSCRIBE', headers as any);
     }
 
-    return {getMessageId, getSubscription, connect, disconnect, send, begin, commit, abort, ack, nack, subscribe, unSubscribe};
+    const ping = (): any => {
+        return version === VERSIONS.V1_0 ? null : BYTES.LF;
+    }
+
+    return {getMessageId, getSubscription, connect, disconnect, send, begin, commit, abort, ack, nack, subscribe, unSubscribe, ping};
 
 }
 
