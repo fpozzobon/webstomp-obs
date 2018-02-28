@@ -1,6 +1,7 @@
 import Client from './client';
 import { VERSIONS, logger } from './utils';
-import { IWebSocket, ClientOptions } from './client';
+import { ClientOptions } from './client';
+import { IWebSocket } from './types';
 
 // The `webstomp` Object
 const stompobservable = {

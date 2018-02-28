@@ -3,7 +3,6 @@ import * as Sinon from 'sinon'
 import Client, {ClientOptions} from '../src/client'
 import { Observable } from 'rxjs/Observable'
 import * as connectedClient from '../src/connectedClient'
-import * as WebSocketHandler from '../src/webSocketHandler'
 import * as stompWebSocketHandler from '../src/protocol/stomp/stompWebSocketHandler';
 import { IWebSocketHandler, IConnectedObservable } from '../src/types';
 
@@ -27,12 +26,9 @@ describe ('Stompobservable client', () => {
              })
         }
     }
-    const webSocketHandlerStub = Sinon.stub()
-    let webSocketHandlerSpy
     let stompWebSocketHandlerSpy
 
     beforeEach( () => {
-        webSocketHandlerSpy = Sinon.stub(WebSocketHandler, 'default').returns(webSocketHandlerStub)
         connectedClientSpy = Sinon.spy(connectedClient, 'ConnectedClient')
         stompWebSocketHandlerSpy = Sinon.stub(stompWebSocketHandler, 'default')
                                    .returns(stompWebSocketHandlerMock)
@@ -44,8 +40,6 @@ describe ('Stompobservable client', () => {
     afterEach( () => {
         connectedClientSpy.reset()
         connectedClientSpy.restore()
-        webSocketHandlerSpy.reset()
-        webSocketHandlerSpy.restore()
         stompWebSocketHandlerSpy.reset()
         stompWebSocketHandlerSpy.restore()
         expectedCreateWsConnection.reset()
@@ -56,11 +50,10 @@ describe ('Stompobservable client', () => {
 
     describe ('constructor', () => {
 
-        it ('should create a new WebSocketHandler passing createWsConnection and options parameters', () => {
+        it ('should call stomWebSocket passing createWsConnection and options parameters', () => {
             const actualClient = new Client(expectedCreateWsConnection, expectedOptions)
-            expect(webSocketHandlerSpy.calledWithNew()).to.be.true
-            Sinon.assert.calledWith(webSocketHandlerSpy, expectedCreateWsConnection, expectedOptions)
             Sinon.assert.calledOnce(stompWebSocketHandlerSpy)
+            Sinon.assert.calledWith(stompWebSocketHandlerSpy, expectedCreateWsConnection, expectedOptions)
         })
     })
 

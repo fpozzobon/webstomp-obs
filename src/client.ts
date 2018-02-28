@@ -15,19 +15,8 @@ import 'rxjs/add/operator/catch';
 import { ConnectedClient } from './connectedClient';
 import { ConnectionHeaders } from './headers';
 import WebSocketHandler from './webSocketHandler';
-import { WsOptions } from './webSocketHandler';
 import stompWebSocketHandler from './protocol/stomp/stompWebSocketHandler';
-import { IWebSocketHandler, IConnectedObservable } from './types';
-
-export interface IWebSocket {
-    binaryType: string,
-    onmessage: Function,
-    onclose: Function,
-    onopen: Function,
-    close: Function,
-    send: Function,
-    url: string
-}
+import { IWebSocketHandler, IConnectedObservable, WsOptions, IWebSocket } from './types';
 
 export interface ClientOptions extends WsOptions {
     maxConnectAttempt: number,
@@ -50,9 +39,7 @@ class Client {
     private isConnected: boolean
 
     constructor (createWsConnection: () => IWebSocket, options: ClientOptions) {
-        const wsHandler: WebSocketHandler = new WebSocketHandler(createWsConnection, options);
-        this.stompWebSockerHandler = stompWebSocketHandler(wsHandler,
-                                                          options.heartbeat);
+        this.stompWebSockerHandler = stompWebSocketHandler(createWsConnection, options);
         this.maxConnectAttempt = options.maxConnectAttempt || DEFAULT_MAX_CONNECT_ATTEMPT;
         this.ttlConnectAttempt =  options.ttlConnectAttempt || DEFAULT_TTL_CONNECT_ATTEMPT;
         this.isConnected = false;

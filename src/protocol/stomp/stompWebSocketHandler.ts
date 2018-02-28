@@ -4,7 +4,7 @@ import { Subject } from 'rxjs/Subject';
 
 import 'rxjs/add/operator/switchMap';
 
-import { IEvent, IProtocol, IConnectedObservable, IWebSocketObservable, IWebSocketHandler } from '../../types';
+import { IEvent, IProtocol, IConnectedObservable, IWebSocketObservable, IWebSocketHandler, WsOptions, IWebSocket } from '../../types';
 import Frame from '../../frame';
 import { ACK, AckHeaders, NackHeaders,
          ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
@@ -12,19 +12,19 @@ import { ACK, AckHeaders, NackHeaders,
 import { VERSIONS, BYTES, typedArrayToUnicodeString, logger } from '../../utils';
 import WebSocketHandler from '../../webSocketHandler';
 import stompProtocol from './stompProtocol';
-import Heartbeat, { HeartbeatOptions } from '../../heartbeat';
+import Heartbeat from '../../heartbeat';
 
 
 // STOMP Handler Class
 //
 // Using stompProtocol
 //
-const stompWebSocketHandler = (wsHandler: WebSocketHandler,
-                              heartbeatOption: HeartbeatOptions | boolean = {outgoing: 10000, incoming: 10000}): IWebSocketHandler<IConnectedObservable> => {
+const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: WsOptions): IWebSocketHandler<IConnectedObservable> => {
+
+    const wsHandler: WebSocketHandler = new WebSocketHandler(createWsConnection, options);
 
     // creating the heartbeat
-    const heartbeatSettings = (heartbeatOption as HeartbeatOptions) || {outgoing: 0, incoming: 0};
-    const heartbeat = new Heartbeat(heartbeatSettings);
+    const heartbeat = new Heartbeat(options.heartbeat);
 
     const initConnection = (headers: ConnectionHeaders): Observable<IConnectedObservable> => {
 
@@ -34,7 +34,7 @@ const stompWebSocketHandler = (wsHandler: WebSocketHandler,
 
             // Check if we already have heart-beat in headers before adding them
             if (!headers['heart-beat']) {
-                headers['heart-beat'] = [heartbeatSettings.outgoing, heartbeatSettings.incoming].join(',');
+                headers['heart-beat'] = [heartbeat.heartbeatSettings.outgoing, heartbeat.heartbeatSettings.incoming].join(',');
             }
 
             let counter: number = 0;

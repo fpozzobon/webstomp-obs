@@ -1,4 +1,3 @@
-import { IWebSocket } from './client';
 import { ConnectedHeaders } from './headers';
 import { VERSIONS, BYTES, logger } from './utils';
 
@@ -9,14 +8,14 @@ export interface HeartbeatOptions {
 
 class Heartbeat {
 
-    private heartbeatSettings: HeartbeatOptions;
+    public heartbeatSettings: HeartbeatOptions;
 
     private pinger: any;
     private ponger: any;
     private lastServerActivity: number;
 
-    constructor(heartbeatSettings: HeartbeatOptions) {
-        this.heartbeatSettings = heartbeatSettings;
+    constructor(heartbeatOption: HeartbeatOptions | boolean = {outgoing: 10000, incoming: 10000}) {
+        this.heartbeatSettings = (heartbeatOption as HeartbeatOptions) || {outgoing: 0, incoming: 0};
     }
 
     // Heart-beat negotiation

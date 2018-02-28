@@ -3,24 +3,16 @@ import { Observer } from 'rxjs/Observer';
 import { Subject } from 'rxjs/Subject';
 import { AnonymousSubscription } from 'rxjs/Subscription'
 
-import { IEvent, IWebSocketObservable } from './types';
+import { IEvent, IWebSocketObservable, WsOptions, IWebSocket } from './types';
 import Frame from './frame';
-import { IWebSocket } from './client';
 import { ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
          SubscribeHeaders, UnsubscribeHeaders } from './headers';
 import { unicodeStringToTypedArray, logger } from './utils';
-import { HeartbeatOptions } from './heartbeat';
 
 
 export interface Subscription {
     id: string;
     unsubscribe: () => void;
-}
-
-export interface WsOptions {
-    binary: boolean;
-    heartbeat: HeartbeatOptions | boolean;
-    debug: boolean;
 }
 
 // STOMP Client Class

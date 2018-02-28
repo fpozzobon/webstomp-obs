@@ -5,6 +5,7 @@ import Frame from './frame';
 import { ACK, AckHeaders, NackHeaders,
          ConnectedHeaders, ConnectionHeaders, DisconnectHeaders,
          SubscribeHeaders, UnsubscribeHeaders } from './headers';
+import { HeartbeatOptions } from './heartbeat';
 
 export interface IWebSocketHandler<T> {
   initConnection: (headers: ConnectionHeaders) => Observable<T>;
@@ -40,4 +41,20 @@ export interface IConnectedObservable {
     subscribeTo: (destination: string, headers: {id?: string, ack?: ACK}) => Observable<Frame>;
     messageSender: Subject<any>;
     protocol: IProtocol;
+}
+
+export interface WsOptions {
+    binary: boolean;
+    heartbeat: HeartbeatOptions | boolean;
+    debug: boolean;
+}
+
+export interface IWebSocket {
+    binaryType: string,
+    onmessage: Function,
+    onclose: Function,
+    onopen: Function,
+    close: Function,
+    send: Function,
+    url: string
 }
