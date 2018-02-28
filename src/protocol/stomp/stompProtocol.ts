@@ -17,16 +17,26 @@ export const VERSIONS = {
 };
 
 // STOMP protocol with the version in parameter
-const stompProtocol = (version?: string): IProtocol => {
+const stompProtocol = (version: string = VERSIONS.V1_0): IProtocol => {
 
     let currentProtocol: IProtocol;
 
-    if (version === VERSIONS.V1_2) {
-        currentProtocol = stompProtocolV1_2();
-    } else if (version === VERSIONS.V1_1) {
-        currentProtocol = stompProtocolV1_1();
-    } else {
-        currentProtocol = stompProtocolV1_0();
+    switch(version) {
+        case VERSIONS.V1_2: {
+           currentProtocol = stompProtocolV1_2();
+           break;
+        }
+        case VERSIONS.V1_1: {
+           currentProtocol = stompProtocolV1_1();
+           break;
+        }
+        case VERSIONS.V1_0: {
+           currentProtocol = stompProtocolV1_0();
+           break;
+        }
+        default: {
+           throw 'Uncompatible version !'
+        }
     }
 
     // [CONNECTED Frame](http://stomp.github.com/stomp-specification-1.1.html#CONNECTED_Frame)
