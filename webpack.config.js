@@ -6,7 +6,7 @@ var libraryName = 'webstompobs',
     plugins = [],
     outputFile,
     devtoolArg,
-    dist = '/example/dist';
+    dist = '/dist';
 
 if (yargs.argv.p) {
   plugins.push(new webpack.optimize.UglifyJsPlugin({ minimize: true }));
