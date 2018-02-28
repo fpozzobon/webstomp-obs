@@ -13,8 +13,8 @@
     <div class="wrapper">
         <div data-info>Connecting...</div>
         <button data-add disabled>Add line</button><button data-push disabled>Push task</button>
-
         <ul data-lines></ul>
+        <button data-disconnect>Disconnect</button>
     </div>
 
     <script type="text/javascript" src="../node_modules/webstomp-obs/webstompobs.js"></script>
@@ -27,6 +27,7 @@
                     currentConnectedClient;
 
             var globalClient = webstompobs.default.client(url, {maxConnectAttempt: 10})
+            var globalSubscription = []
 
             var tasks = lines = 0;
 
@@ -34,6 +35,7 @@
             var linesNode = document.querySelector('[data-lines]');
             var addBtn = document.querySelector('[data-add]');
             var pushBtn = document.querySelector('[data-push]');
+            var disconnectBtn = document.querySelector('[data-disconnect]');
 
 
             function toggleButtons(enable) {
@@ -55,7 +57,7 @@
                 linesNode.appendChild(line);
                 var currentLine = lines-1;
 
-                globalClient.connect({login: login, passcode: password}).subscribe(
+                var cnxSub = globalClient.connect({login: login, passcode: password}).subscribe(
                     function (connectedClient) {
                         var source = connectedClient.subscribe('webstompobservable-tasks-example');
 
@@ -78,6 +80,7 @@
                         console.log('Completed');
                     }
                 );
+                globalSubscription.push(cnxSub)
 
             }
             function onPush() {
@@ -96,7 +99,7 @@
             addBtn.addEventListener('click', onAddLine);
             pushBtn.addEventListener('click', onPush);
 
-            globalClient.connect({login: login, passcode: password}).subscribe(
+            var cnxSub = globalClient.connect({login: login, passcode: password}).subscribe(
             function (connectedClient) {
                 onConnect(connectedClient)
             },
@@ -106,6 +109,13 @@
             function () {
                 console.log('Completed');
             });
+            globalSubscription.push(cnxSub)
+
+            function onDisconnect() {
+                globalSubscription.forEach(sub => sub.unsubscribe());
+                globalSubscription = [];
+            }
+            disconnectBtn.addEventListener('click', onDisconnect);
 
         });
     </script>

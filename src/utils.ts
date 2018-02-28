@@ -1,12 +1,3 @@
-export const VERSIONS = {
-    V1_0: '1.0',
-    V1_1: '1.1',
-    V1_2: '1.2',
-    // Versions of STOMP specifications supported
-    supportedVersions: () => '1.2,1.1,1.0',
-    supportedProtocols: () => ['v10.stomp', 'v11.stomp', 'v12.stomp']
-};
-
 // Define constants for bytes used throughout the code.
 export const BYTES = {
     // LINEFEED byte (octet 10)
@@ -45,3 +36,20 @@ export function sizeOfUTF8(s: string): number {
     if (!s) return 0;
     return encodeURIComponent(s).match(/%..|./g).length;
 }
+
+export class Log  {
+
+    hasDebug: boolean = false;
+
+    public setDebug = (_hasDebug: boolean) => {
+        this.hasDebug = _hasDebug;
+    }
+
+    public debug = (message: any, ...args: any[]) => {
+        if (this.hasDebug) console.log(message, ...args);
+    }
+
+}
+
+const logger = new Log();
+export { logger };

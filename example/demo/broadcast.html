@@ -92,7 +92,7 @@
             var url = 'ws://localhost:61614',
             login = 'admin', password = 'admin';
 
-            var wsClient = webstompobs.default.client(url, {maxConnectAttempt: -1, ttlConnectAttempt: 100})
+            var wsClient = webstompobs.default.client(url, {maxConnectAttempt: 5, ttlConnectAttempt: 100, debug: true})
 
             var sourceConnection = wsClient.connect({login: login, passcode: password});
 
@@ -107,6 +107,7 @@
             };
 
             var subscribeEventHandlers = {}
+            var submitEventHandlerFn = {}
 
             var jsonEncoder = {
                 encode: function(msg) {
@@ -149,11 +150,13 @@
                             );
 
                 var form = roomEl.querySelector('form');
-                form.addEventListener('submit', function(ev) {
+                form.removeEventListener('submit', submitEventHandlerFn[client]);
+                submitEventHandlerFn[client] = function(ev) {
                     onSend(connectedClient, client);
                     ev.preventDefault();
                     return false;
-                });
+                }
+                form.addEventListener('submit', submitEventHandlerFn[client]);
 
                 var button = roomEl.querySelector('button');
                 button.removeEventListener('click', subscribeEventHandlers[client]);
