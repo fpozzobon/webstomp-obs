@@ -29,10 +29,10 @@ export interface IProtocol {
     commit: (transaction: string) => any;
     abort: (transaction: string) => any;
     ack: (messageID: string, subscription: string, headers?: AckHeaders) => any;
-    nack: (messageID: string, subscription: string, headers?: NackHeaders) => any;
+    nack?: (messageID: string, subscription: string, headers?: NackHeaders) => any;
     subscribe: (headers: SubscribeHeaders) => any;
     unSubscribe: (headers: UnsubscribeHeaders) => any;
-    ping: () => any;
+    hearbeatMsg?: () => any;
 }
 
 export interface IConnectedObservable {

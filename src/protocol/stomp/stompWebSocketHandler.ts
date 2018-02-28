@@ -3,11 +3,12 @@ import { Observer } from 'rxjs/Observer';
 import { Subject } from 'rxjs/Subject';
 
 import 'rxjs/add/operator/switchMap';
+import 'rxjs/add/operator/filter';
 
 import { IEvent, IProtocol, IConnectedObservable, IWebSocketObservable, IWebSocketHandler, WsOptions, IWebSocket } from '../../types';
 import Frame from '../../frame';
 import { ACK, ConnectionHeaders, SubscribeHeaders, UnsubscribeHeaders } from '../../headers';
-import { VERSIONS, typedArrayToUnicodeString, logger } from '../../utils';
+import { typedArrayToUnicodeString, logger } from '../../utils';
 import WebSocketHandler from '../../webSocketHandler';
 import stompProtocol from './stompProtocol';
 import Heartbeat from '../../heartbeat';
@@ -47,7 +48,7 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                 }
 
                 // heartbeat
-                if (data === currentProtocol.ping()) {
+                if (currentProtocol.hearbeatMsg && data === currentProtocol.hearbeatMsg()) {
                     logger.debug(`<<< PONG`);
                     return;
                 }
@@ -92,14 +93,14 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                                     currentProtocol = stompProtocol(version);
                                     logger.debug(`connected to server ${frame.headers.server}`);
 
-                                    // we start heartbeat only if the protocol is not version 1.0
-                                    const pingMsg = currentProtocol.ping();
-                                    if (pingMsg) {
+                                    // we start heartbeat only if the protocol support it
+                                    const hearbeatMsg = currentProtocol.hearbeatMsg();
+                                    if (hearbeatMsg) {
                                         const [serverOutgoing, serverIncoming] = (frame.headers['heart-beat'] || '0,0').split(',').map((v: string) => parseInt(v, 10));
                                         heartbeat.startHeartbeat(serverOutgoing,
                                                                  serverIncoming,
                                                                 {
-                                                                    sendPing: () => wsConnection.messageSender.next(pingMsg),
+                                                                    sendPing: () => wsConnection.messageSender.next(hearbeatMsg),
                                                                     close: (error) => connectionObserver.error(error)
                                                                 });
                                     }
@@ -117,7 +118,7 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                                     const subscription: string = currentProtocol.getSubscription(frame)
                                     const messageID: string = currentProtocol.getMessageId(frame);
                                     frame.ack = () => wsConnection.messageSender.next(currentProtocol.ack(messageID, subscription));
-                                    frame.nack = () => wsConnection.messageSender.next(currentProtocol.nack(messageID, subscription));
+                                    currentProtocol.nack && (frame.nack = () => wsConnection.messageSender.next(currentProtocol.nack(messageID, subscription)));
                                     stompMessageReceived.next(frame)
                                     break;
                                 case 'RECEIPT':

@@ -63,7 +63,11 @@ export class ConnectedClient {
 
     // [NACK Frame](http://stomp.github.com/stomp-specification-1.1.html#NACK)
     public nack = (messageID: string, subscription: string, headers?: AckHeaders) => {
-        this.connection.messageSender.next(this.connection.protocol.nack(messageID, subscription, headers));
+        if (this.connection.protocol.nack) {
+            this.connection.messageSender.next(this.connection.protocol.nack(messageID, subscription, headers));
+        } else {
+            throw 'Nack unsupported operation';
+        }
     }
 
     // [RECEIPT Frame](http://stomp.github.com/stomp-specification-1.1.html#RECEIPT)
