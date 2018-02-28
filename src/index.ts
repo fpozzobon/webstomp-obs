@@ -1,5 +1,6 @@
 import Client from './client';
-import { VERSIONS, logger } from './utils';
+import { logger } from './utils';
+import { VERSIONS } from './protocol/stomp/stompProtocol';
 import { ClientOptions } from './client';
 import { IWebSocket } from './types';
 
