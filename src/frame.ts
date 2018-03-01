@@ -1,10 +1,13 @@
 import { ConnectedHeaders } from './headers';
 import {BYTES, sizeOfUTF8, trim} from './utils';
 
-export interface FrameHeader extends ConnectedHeaders {
+export interface FrameHeader {
     [key: string]: any;
     subscription: string;
-    ack: any;
+    ack?: any;
+    'message-id'?: string;
+    transaction?: string;
+    version?: string;
 }
 
 // [STOMP Frame](http://stomp.github.com/stomp-specification-1.1.html#STOMP_Frames) Class

@@ -34,15 +34,15 @@ describe ('stompWebSocketHandler', () => {
     })
 
     afterEach (() => {
-        wsHandlerStub.reset()
+        wsHandlerStub.resetHistory()
         wsHandlerStub.restore()
-        heartbeatStub.reset()
+        heartbeatStub.resetHistory()
         heartbeatStub.restore()
-        createWsConnectionStub.reset()
-        optionsStub.reset()
-        heartbeatMock.startHeartbeat.reset()
-        heartbeatMock.stopHeartbeat.reset()
-        heartbeatMock.activityFromServer.reset()
+        createWsConnectionStub.resetHistory()
+        optionsStub.resetHistory()
+        heartbeatMock.startHeartbeat.resetHistory()
+        heartbeatMock.stopHeartbeat.resetHistory()
+        heartbeatMock.activityFromServer.resetHistory()
     })
 
     describe ('calling the default function ', () => {
@@ -81,7 +81,7 @@ describe ('stompWebSocketHandler', () => {
             // Testing
             tested.initConnection(headerParam)
             // verification
-            Sinon.assert.calledWith(initConnectionSpy, headerParam)
+            Sinon.assert.called(initConnectionSpy)
         })
 
 
@@ -105,16 +105,16 @@ describe ('stompWebSocketHandler', () => {
 
         afterEach (() => {
             cnSubscription.unsubscribe()
-            onCnNextStub.reset()
-            onCnErrorStub.reset()
-            onCnCompleteStub.reset()
+            onCnNextStub.resetHistory()
+            onCnErrorStub.resetHistory()
+            onCnCompleteStub.resetHistory()
         })
 
         it ('should subscribe to messageReceived', () => {
             const messageReceivedSubject = new Subject()
             let messageReceivedSubjectSpy = Sinon.spy(messageReceivedSubject, 'subscribe')
             // test
-            initConnectionSubject.next({messageReceived: messageReceivedSubject})
+            initConnectionSubject.next({messageReceived: messageReceivedSubject, messageSender: new Subject()})
             // verification
             Sinon.assert.calledOnce(messageReceivedSubjectSpy)
         })
@@ -224,16 +224,22 @@ describe ('stompWebSocketHandler', () => {
                                       'receipt-id:' + RECEIPT_ID + BYTES.LF +
                                       BYTES.LF + BYTES.NULL
 
-                let msgReceiptedSpy
+                let currentSubscription
+                let msgReceiptedStub
                 beforeEach ( () => {
-                    msgReceiptedSpy = Sinon.spy(cnParams.messageReceipted, 'next')
+                    msgReceiptedStub = Sinon.stub()
+                    currentSubscription = cnParams.messageReceipted.subscribe(msgReceiptedStub)
                     // test
                     messageReceivedSubject.next({data: RECEIPT_MSG})
                 })
 
+                afterEach( () => {
+                    currentSubscription.unsubscribe()
+                })
+
                 it ('should call cnParams.messageReceipted', () => {
-                    const actualParams = msgReceiptedSpy.getCall(0).args
-                    Sinon.assert.calledOnce(msgReceiptedSpy)
+                    const actualParams = msgReceiptedStub.getCall(0).args
+                    Sinon.assert.calledOnce(msgReceiptedStub)
                     expect(actualParams[0].headers['receipt-id']).to.be.equal(RECEIPT_ID)
                 })
             })
@@ -245,16 +251,22 @@ describe ('stompWebSocketHandler', () => {
                                   'error-id:' + ERROR_ID + BYTES.LF +
                                    BYTES.LF + BYTES.NULL
 
-                let errorReceivedSpy
+                let currentSubscription
+                let errorReceivedStub
                 beforeEach ( () => {
-                    errorReceivedSpy = Sinon.spy(cnParams.errorReceived, 'next')
+                    errorReceivedStub = Sinon.stub()
+                    currentSubscription = cnParams.errorReceived.subscribe(errorReceivedStub)
                     // test
                     messageReceivedSubject.next({data: ERROR_MSG})
                 })
 
+                afterEach( () => {
+                    currentSubscription.unsubscribe()
+                })
+
                 it ('should call cnParams.errorReceived', () => {
-                    const actualParams = errorReceivedSpy.getCall(0).args
-                    Sinon.assert.calledOnce(errorReceivedSpy)
+                    const actualParams = errorReceivedStub.getCall(0).args
+                    Sinon.assert.calledOnce(errorReceivedStub)
                     expect(actualParams[0].headers['error-id']).to.be.equal(ERROR_ID)
                 })
             })

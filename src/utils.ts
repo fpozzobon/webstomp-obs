@@ -1,3 +1,5 @@
+import Frame from './frame';
+
 // Define constants for bytes used throughout the code.
 export const BYTES = {
     // LINEFEED byte (octet 10)
@@ -35,6 +37,25 @@ export function typedArrayToUnicodeString(ua: any): string {
 export function sizeOfUTF8(s: string): number {
     if (!s) return 0;
     return encodeURIComponent(s).match(/%..|./g).length;
+}
+
+export const parseData = (data: any, partialData: any, hearbeatMsg: string) => {
+    if (data instanceof ArrayBuffer) {
+        data = typedArrayToUnicodeString(new Uint8Array(data))
+    }
+
+    // heartbeat
+    if (data === hearbeatMsg) {
+        logger.debug(`<<< PONG`);
+        return;
+    }
+    logger.debug(`<<< ${data}`);
+    // Handle STOMP frames received from the server
+    // The unmarshall function returns the frames parsed and any remaining
+    // data from partial frames are buffered.
+    const unmarshalledData = Frame.unmarshall(partialData + data);
+
+    return unmarshalledData;
 }
 
 export class Log  {

@@ -38,13 +38,13 @@ describe ('Stompobservable client', () => {
     })
 
     afterEach( () => {
-        connectedClientSpy.reset()
+        connectedClientSpy.resetHistory()
         connectedClientSpy.restore()
-        stompWebSocketHandlerSpy.reset()
+        stompWebSocketHandlerSpy.resetHistory()
         stompWebSocketHandlerSpy.restore()
-        expectedCreateWsConnection.reset()
-        initConnectionStub.reset()
-        unsubscribeStub.reset()
+        expectedCreateWsConnection.resetHistory()
+        initConnectionStub.resetHistory()
+        unsubscribeStub.resetHistory()
         this.clock.restore()
     })
 

@@ -23,18 +23,15 @@ interface IObservables {
 export class ConnectedClient {
 
     private connection: IConnectedObservable
-    private counter: number
-    private subscriptions: ISubscriptions
     private broadcastSubscribers: IObservables
     private broadcastReceipterObservable: Observable<Frame>
     private broadcastReceipterObserver: Observer<Frame>
     private broadcastErrorObservable: Observable<Frame>
     private broadcastErrorObserver: Observer<Frame>
-    private broadcastConnectionErrorObservable: Observable<CloseEvent>
-    private broadcastConnectionErrorObserver: Observer<CloseEvent>
+    private broadcastConnectionErrorObservable: Observable<Frame>
+    private broadcastConnectionErrorObserver: Observer<Frame>
 
     constructor(connection: IConnectedObservable) {
-
         this.connection = connection;
         // subscription callbacks indexed by subscriber's ID
         this.broadcastSubscribers = {};
@@ -87,11 +84,11 @@ export class ConnectedClient {
     }
 
     // Return an Observable containing the event when a connection error occure
-    public connectionError = (): Observable<CloseEvent> => {
+    public connectionError = (): Observable<Frame> => {
 
         // create one and only one broadcast receiver
         if (!this.broadcastConnectionErrorObservable) {
-            const connectionErrorSubscribe: ConnectableObservable<CloseEvent> = this.connection.errorReceived
+            const connectionErrorSubscribe: ConnectableObservable<Frame> = this.connection.errorReceived
                 .finally(() => this.broadcastConnectionErrorObserver ? this.broadcastConnectionErrorObserver = null : null)
                 .multicast(() => new Subject())
 

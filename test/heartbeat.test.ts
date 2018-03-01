@@ -16,8 +16,8 @@ describe ('Stompobservable heartbeat', () => {
     })
 
     afterEach ( () => {
-        sendStub.reset()
-        closeStub.reset()
+        sendStub.resetHistory()
+        closeStub.resetHistory()
     })
 
     describe ('with outgoing and incoming provided', () => {

@@ -7,9 +7,10 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "removeComments": false,
-    "inlineSourceMap": true,
+    "inlineSourceMap": false,
     "declaration": true,
-    "outDir": "../types"
+    "outDir": "../types",
+    "declarationDir": "./types"
   },
   "filesGlob": [
     "./**/*.ts",
@@ -21,6 +22,7 @@
     "test",
     "typings/globals",
     "typings/global.d.ts",
-    "example"
+    "example",
+    "types"
   ]
 }

@@ -8,11 +8,13 @@ import 'rxjs/add/operator/filter';
 import { IEvent, IProtocol, IConnectedObservable, IWebSocketObservable, IWebSocketHandler, WsOptions, IWebSocket } from '../../types';
 import Frame from '../../frame';
 import { ACK, ConnectionHeaders, SubscribeHeaders, UnsubscribeHeaders } from '../../headers';
-import { typedArrayToUnicodeString, logger } from '../../utils';
+import { typedArrayToUnicodeString, logger, parseData } from '../../utils';
 import WebSocketHandler from '../../webSocketHandler';
 import stompProtocol from './stompProtocol';
 import Heartbeat from '../../heartbeat';
 
+const parseHeartbeatSettings = (heartbeat: Heartbeat): string =>
+    [heartbeat.heartbeatSettings.outgoing, heartbeat.heartbeatSettings.incoming].join(',')
 
 // STOMP Handler Class
 //
@@ -28,13 +30,13 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
     const initConnection = (headers: ConnectionHeaders): Observable<IConnectedObservable> => {
 
         let disconnectFn;
+        let currentHeaders: ConnectionHeaders = {...headers}
+        // Check if we already have heart-beat in headers before adding them
+        if (!headers['heart-beat']) {
+            currentHeaders['heart-beat'] = parseHeartbeatSettings(heartbeat);
+        }
 
-        return wsHandler.initConnection(headers).switchMap((wsConnection: IWebSocketObservable) => {
-
-            // Check if we already have heart-beat in headers before adding them
-            if (!headers['heart-beat']) {
-                headers['heart-beat'] = [heartbeat.heartbeatSettings.outgoing, heartbeat.heartbeatSettings.incoming].join(',');
-            }
+        return wsHandler.initConnection(currentHeaders).switchMap((wsConnection: IWebSocketObservable) => {
 
             let counter: number = 0;
             let partialData: string = '';
@@ -42,31 +44,20 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
             let currentProtocol: IProtocol = stompProtocol(); // we initialise the current protocol with no version as we need it for CONNECT
 
             const _parseMessageReceived = (evt: IEvent): Frame[] => {
-                let data = evt.data;
-                if (evt.data instanceof ArrayBuffer) {
-                    data = typedArrayToUnicodeString(new Uint8Array(evt.data))
-                }
-
-                // heartbeat
-                if (currentProtocol.hearbeatMsg && data === currentProtocol.hearbeatMsg()) {
-                    logger.debug(`<<< PONG`);
+                const unmarshalledData = parseData(evt.data,
+                                                   partialData,
+                                                   currentProtocol.hearbeatMsg && currentProtocol.hearbeatMsg());
+                if(!unmarshalledData) {
                     return;
                 }
-                logger.debug(`<<< ${data}`);
-                // Handle STOMP frames received from the server
-                // The unmarshall function returns the frames parsed and any remaining
-                // data from partial frames are buffered.
-                const unmarshalledData = Frame.unmarshall(partialData + data);
                 partialData = unmarshalledData.partial;
-
                 return unmarshalledData.frames;
             }
 
-            const unSubscribe = (_headers: UnsubscribeHeaders) => {
-                wsConnection.messageSender.next(currentProtocol.unSubscribe(_headers));
-            }
+            const unSubscribe = (_headers: UnsubscribeHeaders) =>
+                wsConnection.messageSender.next(currentProtocol.unSubscribe(_headers))
 
-            return Observable.create((connectionObserver: Observer<IConnectedObservable>) => {
+            return <Observable<IConnectedObservable>>Observable.create((connectionObserver: Observer<IConnectedObservable>) => {
 
                 const stompMessageReceived = new Subject()
                 const stompMessageReceipted = new Subject()
@@ -76,7 +67,7 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                     const id = _headers.id || 'sub-' + counter++;
                     const currentHeader: SubscribeHeaders = {destination, ack: _headers.ack, id };
                     wsConnection.messageSender.next(currentProtocol.subscribe(currentHeader));
-                    return stompMessageReceived.finally(() => unSubscribe({id})).filter(
+                    return <Observable<Frame>>stompMessageReceived.finally(() => unSubscribe({id})).filter(
                       (frame: Frame) => frame.headers.subscription === id
                     );
                 }
@@ -107,8 +98,8 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
 
                                     connectionObserver.next({
                                             subscribeTo: subscribeTo,
-                                            messageReceipted: stompMessageReceipted,
-                                            errorReceived: errorReceived,
+                                            messageReceipted: <Observable<Frame>>stompMessageReceipted.asObservable(),
+                                            errorReceived: <Observable<Frame>>errorReceived.asObservable(),
                                             messageSender: wsConnection.messageSender,
                                             protocol: currentProtocol
                                         }
@@ -134,11 +125,11 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                 })
 
                 // sending connect
-                wsConnection.messageSender.next(currentProtocol.connect(headers));
+                wsConnection.messageSender.next(currentProtocol.connect(currentHeaders));
 
                 disconnectFn = () => {
                       heartbeat.stopHeartbeat();
-                      wsConnection.messageSender.next(currentProtocol.disconnect(headers));
+                      wsConnection.messageSender.next(currentProtocol.disconnect({receipt: `${counter++}`}));
                 }
 
                 return () => {

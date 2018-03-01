@@ -1,7 +1,7 @@
 import { BYTES } from '../../utils';
 import { IProtocol } from '../../types';
 import Frame from '../../frame';
-import { NackHeaders } from '../../headers';
+import { NackHeaders, DisconnectHeaders } from '../../headers';
 import stompProtocolV1_0 from './stompProtocolV1_0'
 
 
@@ -10,9 +10,7 @@ const stompProtocolV1_1 = (): IProtocol => {
 
     const currentProtocol = stompProtocolV1_0();
 
-    const hearbeatMsg = (): any => {
-        return BYTES.LF;
-    }
+    const hearbeatMsg = (): any => BYTES.LF
 
     // [NACK Frame](http://stomp.github.com/stomp-specification-1.1.html#NACK)
     //
@@ -29,14 +27,14 @@ const stompProtocolV1_1 = (): IProtocol => {
     //       },
     //       {'ack': 'client'}
     //     );
-    const nack = (messageID: string, subscription: string, headers?: NackHeaders): any => {
-        const currentHeader: any = {...headers}
-        currentHeader['message-id'] = messageID;
-        currentHeader.subscription = subscription;
-        return Frame.marshall('NACK', currentHeader);
-    }
+    const nack = (messageID: string, subscription: string, headers?: NackHeaders): any =>
+            Frame.marshall('NACK', {...headers, 'message-id': messageID, subscription})
 
-    return {...currentProtocol, hearbeatMsg, nack};
+    // [DISCONNECT Frame](http://stomp.github.com/stomp-specification-1.1.html#DISCONNECT)
+    const disconnect = (headers: DisconnectHeaders = {}): any =>
+            Frame.marshall('DISCONNECT', headers as any)
+
+    return {...currentProtocol, hearbeatMsg, nack, disconnect}
 
 }
 

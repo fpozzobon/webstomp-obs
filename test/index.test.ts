@@ -8,7 +8,7 @@ describe ('Stompobservable index', () => {
     const clientSpy = Sinon.spy(client, 'default')
 
     afterEach( () => {
-        clientSpy.reset()
+        clientSpy.resetHistory()
     })
 
     describe ('VERSIONS', () => {
@@ -51,7 +51,7 @@ describe ('Stompobservable index', () => {
         })
 
         afterEach( () => {
-            createWsConnectionSpy.reset()
+            createWsConnectionSpy.resetHistory()
         })
 
         it ('should create a new Client using createWsConnection function in parameter', () => {
