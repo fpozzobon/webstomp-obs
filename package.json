@@ -36,7 +36,7 @@
   },
   "homepage": "https://github.com/fpozzobon/webstomp-obs#readme",
   "dependencies": {
-    "rxjs": "^5.4.0"
+    "rxjs": "^5.5.6"
   },
   "devDependencies": {
     "@types/chai": "^3.5.2",

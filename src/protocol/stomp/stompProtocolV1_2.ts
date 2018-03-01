@@ -13,19 +13,11 @@ const stompProtocolV1_2 = (): IProtocol => {
         return frame.headers.ack || currentProtocol.getMessageId(frame);
     }
 
-    const ack = (messageID: string, subscription: string, headers?: AckHeaders): any => {
-        const currentHeader: any = {...headers}
-        currentHeader['id'] = messageID;
-        currentHeader.subscription = subscription;
-        return Frame.marshall('ACK', currentHeader);
-    }
+    const ack = (messageID: string, subscription: string, headers?: AckHeaders): any =>
+            Frame.marshall('ACK', {...headers, 'id': messageID, subscription})
 
-    const nack = (messageID: string, subscription: string, headers?: NackHeaders): any => {
-        const currentHeader: any = {...headers}
-        currentHeader['id'] = messageID;
-        currentHeader.subscription = subscription;
-        return Frame.marshall('NACK', currentHeader);
-    }
+    const nack = (messageID: string, subscription: string, headers?: NackHeaders): any =>
+            Frame.marshall('NACK', {...headers, 'id': messageID, subscription})
 
     return {...currentProtocol, ack, nack, getMessageId};
 

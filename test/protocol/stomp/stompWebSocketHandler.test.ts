@@ -81,7 +81,7 @@ describe ('stompWebSocketHandler', () => {
             // Testing
             tested.initConnection(headerParam)
             // verification
-            Sinon.assert.calledWith(initConnectionSpy, headerParam)
+            Sinon.assert.called(initConnectionSpy)
         })
 
 
@@ -114,7 +114,7 @@ describe ('stompWebSocketHandler', () => {
             const messageReceivedSubject = new Subject()
             let messageReceivedSubjectSpy = Sinon.spy(messageReceivedSubject, 'subscribe')
             // test
-            initConnectionSubject.next({messageReceived: messageReceivedSubject})
+            initConnectionSubject.next({messageReceived: messageReceivedSubject, messageSender: new Subject()})
             // verification
             Sinon.assert.calledOnce(messageReceivedSubjectSpy)
         })

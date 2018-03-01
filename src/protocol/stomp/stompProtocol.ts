@@ -35,15 +35,13 @@ const stompProtocol = (version: string = VERSIONS.V1_0): IProtocol => {
            break;
         }
         default: {
-           throw 'Uncompatible version !'
+            throw `Unsupported version : ${version} ! Versions supported are : ${VERSIONS.supportedVersions()}`
         }
     }
 
     // [CONNECTED Frame](http://stomp.github.com/stomp-specification-1.1.html#CONNECTED_Frame)
-    const connect = (headers: ConnectionHeaders): any => {
-        headers['accept-version'] = VERSIONS.supportedVersions();
-        return currentProtocol.connect(headers);
-    }
+    const connect = (currentProtocol: IProtocol) => (headers: ConnectionHeaders): any =>
+            currentProtocol.connect({...headers, 'accept-version': VERSIONS.supportedVersions()})
 
     return {...currentProtocol, connect};
 
