@@ -6,6 +6,7 @@ var libraryName = 'webstompobs',
     dist = '/dist';
 
 module.exports = {
+  target: 'node',
   entry: __dirname + '/src/index.ts',
   context: path.resolve("./src"),
   output: {
