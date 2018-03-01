@@ -47,6 +47,9 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                 const unmarshalledData = parseData(evt.data,
                                                    partialData,
                                                    currentProtocol.hearbeatMsg && currentProtocol.hearbeatMsg());
+                if(!unmarshalledData) {
+                    return;
+                }
                 partialData = unmarshalledData.partial;
                 return unmarshalledData.frames;
             }
