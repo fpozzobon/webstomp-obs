@@ -1,6 +1,6 @@
 {
   "name": "webstomp-obs",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Stomp over websocket using observable",
   "main": "dist/webstompobs.bundle.js",
   "typings": "./types/index.d.ts",
