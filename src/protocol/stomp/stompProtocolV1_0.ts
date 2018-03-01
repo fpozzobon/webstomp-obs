@@ -21,7 +21,7 @@ const stompProtocolV1_0 = (): IProtocol => {
 
     // [DISCONNECT Frame](http://stomp.github.com/stomp-specification-1.1.html#DISCONNECT)
     const disconnect = (headers: DisconnectHeaders = {}): any =>
-            Frame.marshall('DISCONNECT', headers as any)
+            Frame.marshall('DISCONNECT')
 
     // [SEND Frame](http://stomp.github.com/stomp-specification-1.1.html#SEND)
     //

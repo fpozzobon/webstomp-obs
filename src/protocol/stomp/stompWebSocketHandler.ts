@@ -126,7 +126,7 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
 
                 disconnectFn = () => {
                       heartbeat.stopHeartbeat();
-                      wsConnection.messageSender.next(currentProtocol.disconnect(currentHeaders as any));
+                      wsConnection.messageSender.next(currentProtocol.disconnect({receipt: `${counter++}`}));
                 }
 
                 return () => {
