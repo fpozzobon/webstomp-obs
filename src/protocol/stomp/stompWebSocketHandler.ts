@@ -33,7 +33,7 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
         let currentHeaders: ConnectionHeaders = {...headers}
         // Check if we already have heart-beat in headers before adding them
         if (!headers['heart-beat']) {
-            currentHeaders = parseHeartbeatSettings(heartbeat);
+            currentHeaders['heart-beat'] = parseHeartbeatSettings(heartbeat);
         }
 
         return wsHandler.initConnection(currentHeaders).switchMap((wsConnection: IWebSocketObservable) => {
@@ -54,7 +54,7 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
             const unSubscribe = (_headers: UnsubscribeHeaders) =>
                 wsConnection.messageSender.next(currentProtocol.unSubscribe(_headers))
 
-            return Observable.create((connectionObserver: Observer<IConnectedObservable>) => {
+            return <Observable<IConnectedObservable>>Observable.create((connectionObserver: Observer<IConnectedObservable>) => {
 
                 const stompMessageReceived = new Subject()
                 const stompMessageReceipted = new Subject()
@@ -64,7 +64,7 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                     const id = _headers.id || 'sub-' + counter++;
                     const currentHeader: SubscribeHeaders = {destination, ack: _headers.ack, id };
                     wsConnection.messageSender.next(currentProtocol.subscribe(currentHeader));
-                    return stompMessageReceived.finally(() => unSubscribe({id})).filter(
+                    return <Observable<Frame>>stompMessageReceived.finally(() => unSubscribe({id})).filter(
                       (frame: Frame) => frame.headers.subscription === id
                     );
                 }
@@ -95,8 +95,8 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
 
                                     connectionObserver.next({
                                             subscribeTo: subscribeTo,
-                                            messageReceipted: stompMessageReceipted,
-                                            errorReceived: errorReceived,
+                                            messageReceipted: <Observable<Frame>>stompMessageReceipted.asObservable(),
+                                            errorReceived: <Observable<Frame>>errorReceived.asObservable(),
                                             messageSender: wsConnection.messageSender,
                                             protocol: currentProtocol
                                         }
@@ -126,7 +126,7 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
 
                 disconnectFn = () => {
                       heartbeat.stopHeartbeat();
-                      wsConnection.messageSender.next(currentProtocol.disconnect(currentHeaders));
+                      wsConnection.messageSender.next(currentProtocol.disconnect(currentHeaders as any));
                 }
 
                 return () => {

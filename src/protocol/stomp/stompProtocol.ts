@@ -40,7 +40,7 @@ const stompProtocol = (version: string = VERSIONS.V1_0): IProtocol => {
     }
 
     // [CONNECTED Frame](http://stomp.github.com/stomp-specification-1.1.html#CONNECTED_Frame)
-    const connect = (currentProtocol: IProtocol) => (headers: ConnectionHeaders): any =>
+    const connect = (headers: ConnectionHeaders): any =>
             currentProtocol.connect({...headers, 'accept-version': VERSIONS.supportedVersions()})
 
     return {...currentProtocol, connect};
