@@ -23,8 +23,6 @@ interface IObservables {
 export class ConnectedClient {
 
     private connection: IConnectedObservable
-    private counter: number
-    private subscriptions: ISubscriptions
     private broadcastSubscribers: IObservables
     private broadcastReceipterObservable: Observable<Frame>
     private broadcastReceipterObserver: Observer<Frame>
@@ -34,7 +32,6 @@ export class ConnectedClient {
     private broadcastConnectionErrorObserver: Observer<CloseEvent>
 
     constructor(connection: IConnectedObservable) {
-
         this.connection = connection;
         // subscription callbacks indexed by subscriber's ID
         this.broadcastSubscribers = {};
