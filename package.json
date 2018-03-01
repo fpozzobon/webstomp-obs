@@ -2,14 +2,14 @@
   "name": "webstomp-obs",
   "version": "1.3.2",
   "description": "Stomp over websocket using observable",
-  "main": "./webstompobs.js",
+  "main": "./dist/webstompobs.js",
   "typings": "./types/index.d.ts",
   "scripts": {
     "dev": "webpack --mode development --config webpack.dev.js",
     "build": "webpack -p --mode production --config webpack.prod.js",
     "test": "mocha --opts mocha.opts",
     "test:auto": "mocha --opts mocha.opts --watch",
-    "prepublish": "webpack -p --optimize-minimize --mode production --config webpack.prod.js && in-publish || not-in-publish"
+    "prepublish": "npm build && in-publish || not-in-publish"
   },
   "keywords": [
     "typescript",
@@ -22,7 +22,7 @@
   "files": [
     "types",
     "src",
-    "webstompobs.js",
+    "dist",
     "*.md",
     "LICENCE"
   ],
