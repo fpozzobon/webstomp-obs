@@ -76,7 +76,7 @@
     </div>
 </div>
 
-<script type="text/javascript" src="../node_modules/webstomp-obs/dist/webstompobs.bundle.js"></script>
+<script type="text/javascript" src="../node_modules/webstomp-obs/dist/webstompobs.web.js"></script>
 <script type="text/javascript" src="../node_modules/rxjs/bundles/Rx.js"></script>
 <script type="text/javascript">
     document.addEventListener('DOMContentLoaded', function() {
@@ -87,7 +87,7 @@
         var createWs = function () {
             return new WebSocket(url, ['v10.stomp', 'v11.stomp', 'v12.stomp'])
         }
-        var wsClient = webstompobs.default.over(createWs)
+        var wsClient = webstompobs.over(createWs)
 
         var sourceConnection = wsClient.connect({login: login, passcode: password});
 

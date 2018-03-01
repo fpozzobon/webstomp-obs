@@ -159,7 +159,7 @@
             }
 
             var chat1 = new webstompobsexample.Chat(url, login, password, topic);
-            
+
             chat1.onConnect(function() { onConnect('a') } )
             chat1.onMessage(function(message) { onMessage('a', message)}, function(error) { onError('a', error)} )
             chat1.onConnectionError(function(error) { onError('a', error) })

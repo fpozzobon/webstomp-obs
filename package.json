@@ -2,14 +2,14 @@
   "name": "webstomp-obs",
   "version": "1.4.3",
   "description": "Stomp over websocket using observable",
-  "main": "dist/webstompobs.bundle.js",
+  "main": "dist/webstompobs.node.js",
   "typings": "./types/index.d.ts",
   "scripts": {
     "dev": "webpack --mode development --config webpack.dev.js",
     "build": "webpack -p --mode production --config webpack.prod.js",
     "test": "mocha --opts mocha.opts",
-    "test:auto": "mocha --opts mocha.opts --watch",
-    "prepublish": "npm build && in-publish || not-in-publish"
+    "test:auto": "npm run test --watch",
+    "prepublish": "npm run build && in-publish || not-in-publish"
   },
   "keywords": [
     "typescript",

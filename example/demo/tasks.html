@@ -17,7 +17,7 @@
         <button data-disconnect>Disconnect</button>
     </div>
 
-    <script type="text/javascript" src="../node_modules/webstomp-obs/dist/webstompobs.bundle.js"></script>
+    <script type="text/javascript" src="../node_modules/webstomp-obs/dist/webstompobs.web.js"></script>
     <script type="text/javascript" src="../node_modules/rxjs/bundles/Rx.js"></script>
     <script type="text/javascript">
         document.addEventListener('DOMContentLoaded', function() {
@@ -26,7 +26,7 @@
             login = 'admin', password = 'admin',
                     currentConnectedClient;
 
-            var globalClient = webstompobs.default.client(url, {maxConnectAttempt: 10})
+            var globalClient = webstompobs.client(url, {maxConnectAttempt: 10})
             var globalSubscription = []
 
             var tasks = lines = 0;
