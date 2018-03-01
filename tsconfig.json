@@ -9,7 +9,8 @@
     "removeComments": false,
     "inlineSourceMap": false,
     "declaration": true,
-    "outDir": "../types"
+    "outDir": "../types",
+    "declarationDir": "./types"
   },
   "filesGlob": [
     "./**/*.ts",

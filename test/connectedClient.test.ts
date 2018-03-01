@@ -35,7 +35,7 @@ describe ('Stompobservable connectedClient', () => {
         })
 
         afterEach ( () => {
-            msgSenderSpy.reset()
+            msgSenderSpy.resetHistory()
         })
 
         it ('should call webSocketClient.send with the right parameters', () => {
@@ -74,7 +74,7 @@ describe ('Stompobservable connectedClient', () => {
         })
 
         afterEach ( () => {
-            protocolBeginStub.reset()
+            protocolBeginStub.resetHistory()
         })
 
         it ('should call webSocketClient.begin with undefined transaction', () => {
@@ -101,7 +101,7 @@ describe ('Stompobservable connectedClient', () => {
         })
 
         afterEach ( () => {
-            protocolCommitStub.reset()
+            protocolCommitStub.resetHistory()
         })
 
         it ('should call webSocketClient.commit with transaction', () => {
@@ -122,7 +122,7 @@ describe ('Stompobservable connectedClient', () => {
         })
 
         afterEach ( () => {
-            protocolAbortStub.reset()
+            protocolAbortStub.resetHistory()
         })
 
         it ('should call webSocketClient.abort with transaction', () => {
@@ -143,7 +143,7 @@ describe ('Stompobservable connectedClient', () => {
         })
 
         afterEach ( () => {
-            protocolAckStub.reset()
+            protocolAckStub.resetHistory()
         })
 
         it ('should call webSocketClient.ack with transaction', () => {
@@ -166,7 +166,7 @@ describe ('Stompobservable connectedClient', () => {
         })
 
         afterEach ( () => {
-            protocolNackStub.reset()
+            protocolNackStub.resetHistory()
         })
 
         it ('should call webSocketHandler.nack with transaction', () => {
@@ -281,7 +281,7 @@ describe ('Stompobservable connectedClient', () => {
         })
 
         afterEach ( () => {
-            subscribeStub.reset()
+            subscribeStub.resetHistory()
         })
 
         it ('should give back an observable and call webSocketClient.subscribe with the right parameters', () => {
@@ -369,7 +369,7 @@ describe ('Stompobservable connectedClient', () => {
         })
 
         afterEach ( () => {
-            subscribeSpy.reset()
+            subscribeSpy.resetHistory()
             subscribeSpy.restore()
         })
 

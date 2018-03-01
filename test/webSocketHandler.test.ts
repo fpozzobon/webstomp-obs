@@ -20,9 +20,9 @@ describe ('Stompobservable WebSocketHandler', () => {
     })
 
     afterEach ( () => {
-        wsStub.reset()
-        createWsConnectionStub.reset()
-        options.reset()
+        wsStub.resetHistory()
+        createWsConnectionStub.resetHistory()
+        options.resetHistory()
     })
 
     describe ('initConnection', () => {
@@ -61,10 +61,10 @@ describe ('Stompobservable WebSocketHandler', () => {
             })
 
             afterEach ( () => {
-                connectionSpy.reset()
-                msgReceivedSpy.reset()
-                msgErrorSpy.reset()
-                msgCompleteSpy.reset()
+                connectionSpy.resetHistory()
+                msgReceivedSpy.resetHistory()
+                msgErrorSpy.resetHistory()
+                msgCompleteSpy.resetHistory()
             })
 
             it ('should call createWsConnectionStub', () => {
@@ -98,9 +98,9 @@ describe ('Stompobservable WebSocketHandler', () => {
                 })
 
                 afterEach ( () => {
-                    sendStub.reset()
+                    sendStub.resetHistory()
                     sendStub.restore()
-                    wsStub.close.reset()
+                    wsStub.close.resetHistory()
                 })
 
                 it ('should call observer.next', () => {
@@ -118,7 +118,7 @@ describe ('Stompobservable WebSocketHandler', () => {
                 })
 
                 afterEach ( () => {
-                    disconnectStub.reset()
+                    disconnectStub.resetHistory()
                     disconnectStub.restore()
                 })
 
@@ -142,8 +142,8 @@ describe ('Stompobservable WebSocketHandler', () => {
                 })
 
                 afterEach ( () => {
-                    transmitWsStub.send.reset()
-                    transmitWsStub.reset()
+                    transmitWsStub.send.resetHistory()
+                    transmitWsStub.resetHistory()
                 })
 
                 it ('should call tested._wsSend', () => {

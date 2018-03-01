@@ -34,15 +34,15 @@ describe ('stompWebSocketHandler', () => {
     })
 
     afterEach (() => {
-        wsHandlerStub.reset()
+        wsHandlerStub.resetHistory()
         wsHandlerStub.restore()
-        heartbeatStub.reset()
+        heartbeatStub.resetHistory()
         heartbeatStub.restore()
-        createWsConnectionStub.reset()
-        optionsStub.reset()
-        heartbeatMock.startHeartbeat.reset()
-        heartbeatMock.stopHeartbeat.reset()
-        heartbeatMock.activityFromServer.reset()
+        createWsConnectionStub.resetHistory()
+        optionsStub.resetHistory()
+        heartbeatMock.startHeartbeat.resetHistory()
+        heartbeatMock.stopHeartbeat.resetHistory()
+        heartbeatMock.activityFromServer.resetHistory()
     })
 
     describe ('calling the default function ', () => {
@@ -105,9 +105,9 @@ describe ('stompWebSocketHandler', () => {
 
         afterEach (() => {
             cnSubscription.unsubscribe()
-            onCnNextStub.reset()
-            onCnErrorStub.reset()
-            onCnCompleteStub.reset()
+            onCnNextStub.resetHistory()
+            onCnErrorStub.resetHistory()
+            onCnCompleteStub.resetHistory()
         })
 
         it ('should subscribe to messageReceived', () => {
