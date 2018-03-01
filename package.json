@@ -1,8 +1,8 @@
 {
   "name": "webstomp-obs",
-  "version": "1.4.0",
+  "version": "1.3.2",
   "description": "Stomp over websocket using observable",
-  "main": "./dist/webstompobs.js",
+  "main": "dist/webstompobs.bundle.js",
   "typings": "./types/index.d.ts",
   "scripts": {
     "dev": "webpack --mode development --config webpack.dev.js",
