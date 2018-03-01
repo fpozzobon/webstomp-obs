@@ -7,7 +7,7 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "removeComments": false,
-    "inlineSourceMap": true,
+    "inlineSourceMap": false,
     "declaration": true,
     "outDir": "../types"
   },

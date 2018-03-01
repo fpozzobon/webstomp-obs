@@ -5,10 +5,11 @@
   "main": "./webstompobs.js",
   "typings": "./types/index.d.ts",
   "scripts": {
-    "build": "webpack && webpack -p",
+    "dev": "webpack --mode development --config webpack.dev.js",
+    "build": "webpack -p --mode production --config webpack.prod.js",
     "test": "mocha --opts mocha.opts",
     "test:auto": "mocha --opts mocha.opts --watch",
-    "prepublish": "webpack && webpack -n && in-publish || not-in-publish"
+    "prepublish": "webpack -p --optimize-minimize --mode production --config webpack.prod.js && in-publish || not-in-publish"
   },
   "keywords": [
     "typescript",
@@ -43,16 +44,21 @@
     "@types/es6-shim": "^0.31.33",
     "@types/mocha": "^2.2.41",
     "@types/sinon": "^2.2.2",
+    "awesome-typescript-loader": "^3.5.0",
     "chai": "^3.5.0",
+    "clean-webpack-plugin": "^0.1.18",
     "in-publish": "^2.0.0",
     "mocha": "^3.2.0",
     "sinon": "^1.17.6",
+    "source-map-loader": "^0.2.3",
     "ts-loader": "^2.0.0",
     "ts-node": "^2.1.0",
     "tslint": "^4.4.2",
     "tslint-loader": "^3.4.2",
     "typescript": "2.3.2",
-    "webpack": "^1.12.14",
-    "yargs": "^8.0.1"
+    "uglifyjs-webpack-plugin": "^1.2.2",
+    "webpack": "^4.0.1",
+    "webpack-cli": "^2.0.9",
+    "webpack-merge": "^4.1.2"
   }
 }
