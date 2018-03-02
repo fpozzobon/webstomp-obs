@@ -1,37 +1,35 @@
 var webpack = require('webpack'),
-    path = require('path');
+    path = require('path'),
+    CleanWebpackPlugin = require('clean-webpack-plugin');
 
-var plugins = [],
-  libraryName = 'webstompobsexample';
+var libraryName = 'webstompobsexample';
 
 
 var config = {
-  entry: [
-      __dirname + '/typescript/chat.ts'
-  ],
+  context: path.resolve('./typescript'),
+  entry: __dirname + '/typescript/chat.ts',
   resolve: {
-    root: path.resolve('./typescript'),
-    extensions: [ '', '.js', '.ts', '.jsx', '.tsx' ]
+    extensions: ['.js', '.ts', '.jsx', '.tsx' ]
   },
+  target: 'web',
+  devtool: 'inline-source-map',
   output: {
-      filename: './dist/index.js',
+      path: path.join(__dirname, '/dist'),
+      filename: 'index.js',
+      library: libraryName,
       libraryTarget: 'umd',
-      library: libraryName
+      umdNamedDefine: true,
+      libraryExport: 'default'
   },
   module: {
-    preLoaders: [
-      { test: /\.tsx?$/, loader: 'tslint', exclude: /node_modules/ }
-    ],
-    loaders: [
-      { test: /\.tsx?$/, loader: 'ts', exclude: /node_modules/ }
+    rules: [
+      { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
+      { enforce: "pre", test: /\.js$/, loader: "source-map-loader" }
     ]
   },
-  plugins: plugins,
-  // Individual Plugin Options
-  tslint: {
-    emitErrors: true,
-    failOnHint: true
-  }
+  plugins: [
+    new CleanWebpackPlugin(['dist'])
+  ]
 };
 
 module.exports = config;
