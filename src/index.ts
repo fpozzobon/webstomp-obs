@@ -5,7 +5,7 @@ import { ClientOptions } from './client';
 import { IWebSocket } from './types';
 
 // The `webstomp` Object
-const stompobservable = {
+export const stompobservable = {
     VERSIONS,
     // This method creates a WebSocket client that is connected to
     // the STOMP server located at the url.
@@ -27,5 +27,3 @@ const setupLogger = (options: ClientOptions) => {
   let {debug = false} = options;
   logger.setDebug(!!debug);
 }
-
-export default stompobservable;

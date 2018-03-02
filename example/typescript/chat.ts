@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs/Observable'
-import stompobservable from 'webstomp-obs'
+import { stompobservable } from 'webstomp-obs'
 import Client from 'webstomp-obs/types/client'
 import { ConnectedClient } from 'webstomp-obs/types/connectedClient'
 import 'rxjs/add/operator/first'

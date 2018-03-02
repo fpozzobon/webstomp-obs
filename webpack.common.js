@@ -15,8 +15,7 @@ const common = {
     filename: libraryName + '.bundle.js',
     library: libraryName,
     libraryTarget: 'umd',
-    umdNamedDefine: true,
-    libraryExport: 'default'
+    umdNamedDefine: true
   },
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx' ]

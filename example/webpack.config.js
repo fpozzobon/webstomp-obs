@@ -18,8 +18,7 @@ var config = {
       filename: 'index.js',
       library: libraryName,
       libraryTarget: 'umd',
-      umdNamedDefine: true,
-      libraryExport: 'default'
+      umdNamedDefine: true
   },
   module: {
     rules: [
