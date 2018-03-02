@@ -1,9 +1,9 @@
 import { expect } from 'chai'
-import stompObservable from '../src/index'
+import { stompobservable } from '../src/index'
 import * as Sinon from 'sinon'
 import * as client from '../src/client'
 
-describe ('Stompobservable index', () => {
+describe ('stompobservable index', () => {
 
     const clientSpy = Sinon.spy(client, 'default')
 
@@ -13,7 +13,7 @@ describe ('Stompobservable index', () => {
 
     describe ('VERSIONS', () => {
 
-        const versions = stompObservable.VERSIONS;
+        const versions = stompobservable.VERSIONS;
 
         it ('supportedVersions() should give back the supported versions "1.2,1.1,1.0"', () => {
             expect(versions.supportedVersions()).equals('1.2,1.1,1.0');
@@ -30,13 +30,13 @@ describe ('Stompobservable index', () => {
     describe ('client function', () => {
 
         it ('should create a new Client with a function creating a Websocket', () => {
-            stompObservable.client('fakeUrl');
+            stompobservable.client('fakeUrl');
             expect(clientSpy.calledWithNew()).to.be.true;
             expect(clientSpy.getCall(0).args[0]).to.be.a('function');
         })
 
         it ('should return the client instance', () => {
-            let actualReturn = stompObservable.client('fakeUrl');
+            let actualReturn = stompobservable.client('fakeUrl');
             expect(actualReturn).to.be.equal(clientSpy.returnValues[0]);
         })
 
@@ -55,7 +55,7 @@ describe ('Stompobservable index', () => {
         })
 
         it ('should create a new Client using createWsConnection function in parameter', () => {
-            stompObservable.over(createWsConnectionSpy);
+            stompobservable.over(createWsConnectionSpy);
             expect(clientSpy.calledWithNew()).to.be.true;
             expect(createWsConnectionSpy).to.be.equal(clientSpy.getCall(0).args[0]);
             expect({}).to.be.eql(clientSpy.getCall(0).args[1]);
@@ -63,14 +63,14 @@ describe ('Stompobservable index', () => {
 
         it ('should create a new Client using createWsConnection function and options in parameter', () => {
             let fakeOptions = Sinon.spy()
-            stompObservable.over(createWsConnectionSpy, fakeOptions as any);
+            stompobservable.over(createWsConnectionSpy, fakeOptions as any);
             expect(clientSpy.calledWithNew()).to.be.true;
             expect(createWsConnectionSpy).to.be.equal(clientSpy.getCall(0).args[0]);
             expect(fakeOptions).to.be.eql(clientSpy.getCall(0).args[1]);
         })
 
         it ('should return the client instance', () => {
-            let actualReturn = stompObservable.over(createWsConnectionSpy);
+            let actualReturn = stompobservable.over(createWsConnectionSpy);
             expect(actualReturn).to.be.equal(clientSpy.returnValues[0]);
         })
 

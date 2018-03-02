@@ -1,12 +1,13 @@
-var webpack = require('webpack'),
-    path = require('path'),
-    CleanWebpackPlugin = require('clean-webpack-plugin');
+const webpack = require('webpack'),
+      merge = require('webpack-merge'),
+      path = require('path'),
+      CleanWebpackPlugin = require('clean-webpack-plugin');
 
-var libraryName = 'webstompobs',
-    dist = '/dist';
+const libraryName = 'webstompobs',
+      dist = '/dist';
 
-module.exports = {
-  target: 'node',
+const common = {
+  target: 'web',
   entry: __dirname + '/src/index.ts',
   context: path.resolve("./src"),
   output: {
@@ -24,8 +25,24 @@ module.exports = {
  ],
   module: {
     rules: [
-      { test: /\.tsx?$/, loader: "awesome-typescript-loader" },
+      { test: /\.tsx?$/, loader: "ts-loader" },
       { enforce: "pre", test: /\.js$/, loader: "source-map-loader" }
     ]
   }
 };
+
+const clientConfig = merge(common, {
+  target: 'web',
+  output: {
+    filename: libraryName + '.web.js'
+  }
+});
+
+const serverConfig = merge(common, {
+  target: 'node',
+  output: {
+    filename: libraryName + '.node.js'
+  }
+});
+
+module.exports = [ serverConfig, clientConfig ];

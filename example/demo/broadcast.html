@@ -84,7 +84,7 @@
         </div>
     </div>
 
-    <script type="text/javascript" src="../node_modules/webstomp-obs/dist/webstompobs.bundle.js"></script>
+    <script type="text/javascript" src="../node_modules/webstomp-obs/dist/webstompobs.web.js"></script>
     <script type="text/javascript" src="../node_modules/rxjs/bundles/Rx.js"></script>
     <script type="text/javascript">
         document.addEventListener('DOMContentLoaded', function() {
@@ -92,7 +92,7 @@
             var url = 'ws://localhost:61614',
             login = 'admin', password = 'admin';
 
-            var wsClient = webstompobs.default.client(url, {maxConnectAttempt: 5, ttlConnectAttempt: 100, debug: true})
+            var wsClient = webstompobs.stompobservable.client(url, {maxConnectAttempt: 5, ttlConnectAttempt: 100, debug: true})
 
             var sourceConnection = wsClient.connect({login: login, passcode: password});
 

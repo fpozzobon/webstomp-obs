@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Example Stomp over websocket using observable",
   "scripts": {
-    "example": "webpack && opn http://localhost:8010/demo & http-server -p 8010"
+    "example": "webpack --mode development && opn http://localhost:8010/demo & http-server -p 8010"
   },
   "keywords": [
     "typescript",
@@ -17,16 +17,17 @@
   "license": "Apache-2.0",
   "dependencies": {
     "rxjs": "^5.4.0",
-    "webstomp-obs": "^1.4.2"
+    "webstomp-obs": "^1.5.0"
   },
   "devDependencies": {
     "http-server": "^0.9.0",
     "opn-cli": "^3.1.0",
-    "webpack": "^1.12.14",
-    "ts-loader": "^2.0.0",
-    "ts-node": "^2.1.0",
+    "ts-loader": "^4.0.0",
+    "ts-node": "^5.0.0",
     "tslint": "^4.4.2",
     "tslint-loader": "^3.4.2",
-    "typescript": "^2.1.6"
+    "typescript": "^2.7.2",
+    "webpack": "^4.0.1",
+    "webpack-cli": "^2.0.9"
   }
 }

@@ -1,6 +1,6 @@
 # webstomp-obs
 
-This library provides a [stomp](https://stomp.github.io/) client for Web browsers and nodejs through Web Sockets.
+This library provides a [stomp](https://stomp.github.io/) client for Web browsers and nodejs through Web Sockets with Rxjs Observables.
 
 ## Project Status
 
@@ -50,7 +50,11 @@ Go into example folder, `npm run example` will open examples in browser and try 
 ### Web browser old fashion style
 
 ```html
-<script type="text/javascript" src="node_modules/webstomp-obs/webstompobs.js"></script>
+<script type="text/javascript" src="node_modules/webstomp-obs/dist/webstompobs.web.js"></script>
+```
+
+```node bundle
+node_modules/webstomp-obs/dist/webstompobs.node.js
 ```
 
 `webstompobs` will be a global variable.
