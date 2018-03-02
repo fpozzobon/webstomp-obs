@@ -17,7 +17,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "rxjs": "^5.4.0",
-    "webstomp-obs": "^1.5.0-rc0"
+    "webstomp-obs": "^1.5.0"
   },
   "devDependencies": {
     "http-server": "^0.9.0",
