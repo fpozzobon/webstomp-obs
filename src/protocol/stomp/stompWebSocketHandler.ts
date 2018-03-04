@@ -31,7 +31,6 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
 
     const initConnection = (headers: ConnectionHeaders): Observable<IConnectedObservable> => {
 
-        let disconnectFn;
         let currentHeaders: ConnectionHeaders = {...headers}
         // Check if we already have heart-beat in headers before adding them
         if (!headers['heart-beat']) {
@@ -47,11 +46,6 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
 
             // sending connect to the server
             wsConnection.messageSender.next(currentProtocol.connect(currentHeaders));
-
-            disconnectFn = () => {
-                  heartbeat.stopHeartbeat();
-                  wsConnection.messageSender.next(currentProtocol.disconnect({receipt: `${counter++}`}));
-            }
 
             const _parseMessageReceived = (evt: IEvent): Frame[] => {
                 const unmarshalledData = parseData(evt.data,
@@ -126,12 +120,12 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                             messageSender: wsConnection.messageSender,
                             protocol: protocol }
                 }).finally(() => {
+                    heartbeat.stopHeartbeat();
+                    wsConnection.messageSender.next(currentProtocol.disconnect({receipt: `${counter++}`}));
                     messageSub && messageSub.unsubscribe();
                     stompMessageReceived.complete();
                 })
 
-        }).finally(() => {
-            disconnectFn && disconnectFn();
         })
     }
 
