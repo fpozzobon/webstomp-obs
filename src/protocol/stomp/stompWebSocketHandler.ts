@@ -103,19 +103,22 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                                                 });
                     }
                 })
-                .map((mappedFrame) => {
-                    const {frame, protocol} = mappedFrame
-                    currentProtocol = protocol;
-                    logger.debug(`connected to server ${frame.headers.server}`);
+                .switchMap((mappedFrame) => {
+                    return Observable.create((stompWebSocketObserver: Observer<IConnectedObservable>) => {
+                        const {frame, protocol} = mappedFrame
+                        currentProtocol = protocol;
+                        logger.debug(`connected to server ${frame.headers.server}`);
 
-                    return { subscribeTo: subscribeTo,
-                            messageReceipted: stompMessageReceipted,
-                            errorReceived: errorReceived,
-                            messageSender: wsConnection.messageSender,
-                            protocol: protocol }
-                }).finally(() => {
-                    heartbeat.stopHeartbeat();
-                    wsConnection.messageSender.next(currentProtocol.disconnect({receipt: `${counter++}`}));
+                        stompWebSocketObserver.next({ subscribeTo: subscribeTo,
+                                messageReceipted: stompMessageReceipted,
+                                errorReceived: errorReceived,
+                                messageSender: wsConnection.messageSender,
+                                protocol: protocol })
+                        return () => {
+                            heartbeat.stopHeartbeat();
+                            wsConnection.messageSender.next(protocol.disconnect({receipt: `${counter++}`}));
+                        }
+                    })
                 })
 
         })
