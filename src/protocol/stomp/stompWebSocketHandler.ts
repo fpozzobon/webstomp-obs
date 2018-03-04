@@ -61,31 +61,25 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
             const unSubscribe = (_headers: UnsubscribeHeaders) =>
                 wsConnection.messageSender.next(currentProtocol.unSubscribe(_headers))
 
-            const stompMessageReceived = new Subject()
-
             const subscribeTo = (destination: string, _headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
                 const id = _headers.id || 'sub-' + counter++;
                 const currentHeader: SubscribeHeaders = {destination, ack: _headers.ack, id };
                 wsConnection.messageSender.next(currentProtocol.subscribe(currentHeader));
-                return <Observable<Frame>>stompMessageReceived.finally(() => unSubscribe({id})).filter(
-                  (frame: Frame) => frame.headers.subscription === id
-                );
+                return frameObservable.filter((frame) => frame.command === 'MESSAGE')
+                        .filter((frame: Frame) => frame.headers.subscription === id)
+                        .map((frame) => {
+                            const subscription: string = currentProtocol.getSubscription(frame)
+                            const messageID: string = currentProtocol.getMessageId(frame);
+                            frame.ack = () => wsConnection.messageSender.next(currentProtocol.ack(messageID, subscription));
+                            currentProtocol.nack && (frame.nack = () => wsConnection.messageSender.next(currentProtocol.nack(messageID, subscription)));
+                            return frame
+                        }).finally(() => unSubscribe({id}))
             }
 
             // subscribing to message received
             const frameObservable = wsConnection.messageReceived
                 .do(heartbeat.activityFromServer)
                 .concatMap(_parseMessageReceived)
-
-            const messageSub = frameObservable
-                .filter((frame) => frame.command === 'MESSAGE')
-                .subscribe((frame) => {
-                    const subscription: string = currentProtocol.getSubscription(frame)
-                    const messageID: string = currentProtocol.getMessageId(frame);
-                    frame.ack = () => wsConnection.messageSender.next(currentProtocol.ack(messageID, subscription));
-                    currentProtocol.nack && (frame.nack = () => wsConnection.messageSender.next(currentProtocol.nack(messageID, subscription)));
-                    stompMessageReceived.next(frame)
-                })
 
             const stompMessageReceipted = frameObservable
                 .filter((frame) => frame.command === 'RECEIPT')
@@ -122,8 +116,6 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                 }).finally(() => {
                     heartbeat.stopHeartbeat();
                     wsConnection.messageSender.next(currentProtocol.disconnect({receipt: `${counter++}`}));
-                    messageSub && messageSub.unsubscribe();
-                    stompMessageReceived.complete();
                 })
 
         })
