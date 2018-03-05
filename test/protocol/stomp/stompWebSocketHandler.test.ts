@@ -6,7 +6,7 @@ import { Subject } from 'rxjs/Subject';
 import { BYTES } from '../../../src/utils';
 import stompWebSocketHandler from '../../../src/protocol/stomp/stompWebSocketHandler'
 import * as WebSocketHandler from '../../../src/webSocketHandler'
-import * as Heartbeat from '../../../src/heartbeat'
+import * as Heartbeat from '../../../src/observableHeartbeat'
 
 describe ('stompWebSocketHandler', () => {
 
@@ -21,12 +21,10 @@ describe ('stompWebSocketHandler', () => {
         initConnection: (headers: any) => initConnectionSubject
     }
 
-    const heartbeatMock = {
-        startHeartbeat: Sinon.stub(),
-        stopHeartbeat: Sinon.stub(),
-        activityFromServer: Sinon.stub(),
-        heartbeatSettings: Sinon.stub()
-    }
+    const heartbeatSubject = new Subject()
+    const heartbeatMock = (clientSettings: HeartbeatOptions,
+                                 serverSettings: HeartbeatOptions,
+                                 sendPing: () => void) => heartbeatSubject
 
     beforeEach (() => {
         wsHandlerStub = Sinon.stub(WebSocketHandler, 'default').returns(wsHandlerMock)
@@ -40,9 +38,6 @@ describe ('stompWebSocketHandler', () => {
         heartbeatStub.restore()
         createWsConnectionStub.resetHistory()
         optionsStub.resetHistory()
-        heartbeatMock.startHeartbeat.resetHistory()
-        heartbeatMock.stopHeartbeat.resetHistory()
-        heartbeatMock.activityFromServer.resetHistory()
     })
 
     describe ('calling the default function ', () => {
@@ -53,15 +48,6 @@ describe ('stompWebSocketHandler', () => {
             // verification
             expect(wsHandlerStub.calledWithNew()).to.be.true
             Sinon.assert.calledWith(wsHandlerStub, createWsConnectionStub, optionsStub)
-        })
-
-        it ('should create an Heartbeat with the right parameters', () => {
-            // Testing
-            optionsStub.heartbeat = Sinon.stub()
-            stompWebSocketHandler(createWsConnectionStub, optionsStub)
-            // verification
-            expect(heartbeatStub.calledWithNew()).to.be.true
-            Sinon.assert.calledWith(heartbeatStub, optionsStub.heartbeat)
         })
 
     })
@@ -161,38 +147,24 @@ describe ('stompWebSocketHandler', () => {
                 expect(cnParams.messageSender).to.be.equal(messageSenderSubject)
             })
 
-            it ('should call heartbeat startHeartbeat', () => {
-                // verification
-                Sinon.assert.calledOnce(heartbeatMock.startHeartbeat)
-            })
-
-            it ('should call heartbeat activityFromServer', () => {
-                // verification
-                Sinon.assert.calledOnce(heartbeatMock.activityFromServer)
-            })
-
             describe ('heartbeat', () => {
 
-                let heartbeatArgs
-
-                beforeEach( () => {
-                    heartbeatArgs = heartbeatMock.startHeartbeat.getCall(0).args
+                it ('should be created with the right parameters', () => {
+                    // Testing
+                    optionsStub.heartbeat = {incoming: 500, outgoing: 1000}
+                    stompWebSocketHandler(createWsConnectionStub, optionsStub)
+                    // verification
+                    Sinon.assert.calledOnce(heartbeatStub)
                 })
 
-                it ('should send heartbeatMsg on sendPing', () => {
+                it ('should expose the error and disconnect', () => {
                     let messageSenderSubjectSpy = Sinon.spy(messageSenderSubject, 'next')
                     // test
-                    heartbeatArgs[2].sendPing()
-                    // verification
-                    Sinon.assert.calledOnce(messageSenderSubjectSpy)
-                    Sinon.assert.calledWith(messageSenderSubjectSpy, BYTES.LF)
-                })
-
-                it ('should give back an error on close', () => {
-                    // test
-                    heartbeatArgs[2].close()
+                    heartbeatSubject.error("an error")
                     // verification
                     Sinon.assert.calledOnce(onCnErrorStub)
+                    Sinon.assert.calledOnce(messageSenderSubjectSpy)
+                    Sinon.assert.calledWithMatch(messageSenderSubjectSpy, 'DISCONNECT')
                 })
 
             })
@@ -206,13 +178,6 @@ describe ('stompWebSocketHandler', () => {
                     // verification
                     Sinon.assert.calledOnce(messageSenderSubjectSpy)
                     Sinon.assert.calledWithMatch(messageSenderSubjectSpy, 'DISCONNECT')
-                })
-
-                it ('should stop heartbeat', () => {
-                    // test
-                    cnSubscription.unsubscribe()
-                    // verification
-                    Sinon.assert.calledOnce(heartbeatMock.stopHeartbeat)
                 })
 
             })
@@ -276,7 +241,7 @@ describe ('stompWebSocketHandler', () => {
 
                 const TEXT_MSG = 'test msg'
                 const DESTINATION = '/topic/webstompobs-typescript-chat-example'
-                const SUBSCRIPTION = 'sub-0'
+                const SUBSCRIPTION = 'sub-1'
                 const MESSAGE_ID = '15-2'
                 const MESSAGE_MSG = 'MESSAGE' + BYTES.LF +
                                       'destination:' + DESTINATION + BYTES.LF +
