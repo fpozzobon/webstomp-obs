@@ -6,7 +6,6 @@ import 'rxjs/add/operator/switchMap';
 import 'rxjs/add/operator/filter';
 import 'rxjs/add/operator/concatMap';
 import 'rxjs/add/operator/map';
-import 'rxjs/add/operator/let';
 import 'rxjs/add/observable/merge';
 
 import { IEvent, IProtocol, IConnectedObservable, IWebSocketObservable, IWebSocketHandler, WsOptions, IWebSocket } from '../../types';
@@ -36,6 +35,48 @@ const messageParser = () => {
         }
 
     return { parseMessageReceived }
+}
+
+const stompMessageObs = (wsConnection: IWebSocketObservable, protocol: IProtocol, parseMessage) => {
+    let counter = 0;
+    // subscribing to message received
+    const frameObservable: Observable<Frame> = wsConnection.messageReceived
+        .concatMap(parseMessage.parseMessageReceived(protocol))
+
+    // receipt message flux
+    const stompMessageReceipted: Observable<Frame> = frameObservable
+        .filter((frame: Frame) => frame.command === 'RECEIPT')
+
+    // errorReceived flux
+    const errorReceived: Observable<Frame> = frameObservable
+        .filter((frame: Frame) => frame.command === 'ERROR')
+
+    // Subscribing to a destination
+    const subscribeTo = (destination: string, _headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
+        const id = _headers.id || 'sub-' + counter++;
+        const currentHeader: SubscribeHeaders = {destination, ack: _headers.ack, id };
+        // sending subscribe to the server
+        wsConnection.messageSender.next(protocol.subscribe(currentHeader));
+        // subscribing to the messages from the subscription
+        return frameObservable.filter((frame: Frame) => frame.command === 'MESSAGE')
+                .filter((frame: Frame) => frame.headers.subscription === id)
+                .map((frame: Frame) => {
+                    const subscription: string = protocol.getSubscription(frame)
+                    const messageID: string = protocol.getMessageId(frame);
+                    frame.ack = () => wsConnection.messageSender.next(protocol.ack(messageID, subscription));
+                    protocol.nack && (frame.nack = () => wsConnection.messageSender.next(protocol.nack(messageID, subscription)));
+                    return frame
+                }).finally(() => wsConnection.messageSender.next(protocol.unSubscribe({id})))
+    }
+
+    return Observable.create((stompWebSocketObserver: Observer<IConnectedObservable>) => {
+        stompWebSocketObserver.next({ subscribeTo: subscribeTo,
+                messageReceipted: stompMessageReceipted,
+                errorReceived: errorReceived,
+                messageSender: wsConnection.messageSender,
+                protocol: protocol })
+        return () => wsConnection.messageSender.next(protocol.disconnect({receipt: `${counter++}`}))
+    })
 }
 
 // STOMP Handler Class
@@ -91,47 +132,8 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                 .switchMap((mappedFrame) => {
                     const {frame, protocol} = mappedFrame
                     logger.debug(`connected to server ${frame.headers.server}`);
-
-                    // subscribing to message received
-                    const frameObservable = wsConnection.messageReceived
-                        .concatMap(parseMessage.parseMessageReceived(protocol))
-
-                    // receipt message flux
-                    const stompMessageReceipted = frameObservable
-                        .filter((frame) => frame.command === 'RECEIPT')
-
-                    // errorReceived flux
-                    const errorReceived = frameObservable
-                        .filter((frame) => frame.command === 'ERROR')
-
-                    // Subscribing to a destination
-                    const subscribeTo = (destination: string, _headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
-                        const id = _headers.id || 'sub-' + counter++;
-                        const currentHeader: SubscribeHeaders = {destination, ack: _headers.ack, id };
-                        // sending subscribe to the server
-                        wsConnection.messageSender.next(protocol.subscribe(currentHeader));
-                        // subscribing to the messages from the subscription
-                        return frameObservable.filter((frame) => frame.command === 'MESSAGE')
-                                .filter((frame: Frame) => frame.headers.subscription === id)
-                                .map((frame) => {
-                                    const subscription: string = protocol.getSubscription(frame)
-                                    const messageID: string = protocol.getMessageId(frame);
-                                    frame.ack = () => wsConnection.messageSender.next(protocol.ack(messageID, subscription));
-                                    protocol.nack && (frame.nack = () => wsConnection.messageSender.next(protocol.nack(messageID, subscription)));
-                                    return frame
-                                }).finally(() => wsConnection.messageSender.next(protocol.unSubscribe({id})))
-                    }
-
-                    const connectionObserver = Observable.create((stompWebSocketObserver: Observer<IConnectedObservable>) => {
-                        stompWebSocketObserver.next({ subscribeTo: subscribeTo,
-                                messageReceipted: stompMessageReceipted,
-                                errorReceived: errorReceived,
-                                messageSender: wsConnection.messageSender,
-                                protocol: protocol })
-                    })
                     // merging the heartbeat with the init connection
-                    return Observable.merge(connectionObserver, heartbeatObserver(mappedFrame))
-                        .finally(() => {wsConnection.messageSender.next(protocol.disconnect({receipt: `${counter++}`}))})
+                    return Observable.merge(stompMessageObs(wsConnection, protocol, parseMessage), heartbeatObserver(mappedFrame))
                 })
 
         })
