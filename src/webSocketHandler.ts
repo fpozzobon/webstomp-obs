@@ -55,8 +55,6 @@ class WebSocketHandler {
 
             // Creating the Observables
             const messageReceived = new Subject()
-
-            const messageReceipted = new Subject()
             const messageSender = new Subject()
             let inputSubscription: AnonymousSubscription
 
@@ -80,7 +78,6 @@ class WebSocketHandler {
 
             return () => {
                 messageReceived.complete()
-                messageReceipted.complete()
                 inputSubscription && inputSubscription.unsubscribe()
                 this.disconnect()
             }
