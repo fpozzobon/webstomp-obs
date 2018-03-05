@@ -4,7 +4,7 @@ import { Subject } from 'rxjs/Subject';
 import Frame from './frame';
 import { ACK, AckHeaders, NackHeaders,
          ConnectionHeaders, DisconnectHeaders, SubscribeHeaders, UnsubscribeHeaders } from './headers';
-import { HeartbeatOptions } from './heartbeat';
+import { HeartbeatOptions } from './observableHeartbeat';
 
 export interface IWebSocketHandler<T> {
   initConnection: (headers: ConnectionHeaders) => Observable<T>;

@@ -4,6 +4,9 @@ import { Subject } from 'rxjs/Subject';
 
 import 'rxjs/add/operator/switchMap';
 import 'rxjs/add/operator/filter';
+import 'rxjs/add/operator/concatMap';
+import 'rxjs/add/operator/map';
+import 'rxjs/add/observable/merge';
 
 import { IEvent, IProtocol, IConnectedObservable, IWebSocketObservable, IWebSocketHandler, WsOptions, IWebSocket } from '../../types';
 import Frame from '../../frame';
@@ -11,10 +14,70 @@ import { ACK, ConnectionHeaders, SubscribeHeaders, UnsubscribeHeaders } from '..
 import { typedArrayToUnicodeString, logger, parseData } from '../../utils';
 import WebSocketHandler from '../../webSocketHandler';
 import stompProtocol from './stompProtocol';
-import Heartbeat from '../../heartbeat';
+import observableHeartbeat, {HeartbeatOptions} from '../../observableHeartbeat';
 
-const parseHeartbeatSettings = (heartbeat: Heartbeat): string =>
-    [heartbeat.heartbeatSettings.outgoing, heartbeat.heartbeatSettings.incoming].join(',')
+const parseHeartbeatSettings = (settings: HeartbeatOptions): string =>
+    [settings.outgoing, settings.incoming].join(',')
+
+const messageParser = () => {
+    let partialData: string = '';
+
+    const parseMessageReceived = (protocol: IProtocol) =>
+        (evt: IEvent): Frame[] => {
+            const unmarshalledData = parseData(evt.data,
+                                               partialData,
+                                               protocol.hearbeatMsg && protocol.hearbeatMsg())
+            if(!unmarshalledData) {
+                return []
+            }
+            partialData = unmarshalledData.partial
+            return unmarshalledData.frames
+        }
+
+    return { parseMessageReceived }
+}
+
+const stompMessageObs = (wsConnection: IWebSocketObservable, protocol: IProtocol, parseMessage) => {
+    let counter = 0;
+    // subscribing to message received
+    const frameObservable: Observable<Frame> = wsConnection.messageReceived
+        .concatMap(parseMessage.parseMessageReceived(protocol))
+
+    // receipt message flux
+    const stompMessageReceipted: Observable<Frame> = frameObservable
+        .filter((frame: Frame) => frame.command === 'RECEIPT')
+
+    // errorReceived flux
+    const errorReceived: Observable<Frame> = frameObservable
+        .filter((frame: Frame) => frame.command === 'ERROR')
+
+    // Subscribing to a destination
+    const subscribeTo = (destination: string, _headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
+        const id = _headers.id || 'sub-' + counter++;
+        const currentHeader: SubscribeHeaders = {destination, ack: _headers.ack, id };
+        // sending subscribe to the server
+        wsConnection.messageSender.next(protocol.subscribe(currentHeader));
+        // subscribing to the messages from the subscription
+        return frameObservable.filter((frame: Frame) => frame.command === 'MESSAGE')
+                .filter((frame: Frame) => frame.headers.subscription === id)
+                .map((frame: Frame) => {
+                    const subscription: string = protocol.getSubscription(frame)
+                    const messageID: string = protocol.getMessageId(frame);
+                    frame.ack = () => wsConnection.messageSender.next(protocol.ack(messageID, subscription));
+                    protocol.nack && (frame.nack = () => wsConnection.messageSender.next(protocol.nack(messageID, subscription)));
+                    return frame
+                }).finally(() => wsConnection.messageSender.next(protocol.unSubscribe({id})))
+    }
+
+    return Observable.create((stompWebSocketObserver: Observer<IConnectedObservable>) => {
+        stompWebSocketObserver.next({ subscribeTo: subscribeTo,
+                messageReceipted: stompMessageReceipted,
+                errorReceived: errorReceived,
+                messageSender: wsConnection.messageSender,
+                protocol: protocol })
+        return () => wsConnection.messageSender.next(protocol.disconnect({receipt: `${counter++}`}))
+    })
+}
 
 // STOMP Handler Class
 //
@@ -24,125 +87,55 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
 
     const wsHandler: WebSocketHandler = new WebSocketHandler(createWsConnection, options);
 
-    // creating the heartbeat
-    const heartbeat = new Heartbeat(options.heartbeat);
+    let heartbeatClientSettings: HeartbeatOptions = ((typeof options.heartbeat === 'boolean') ?
+        {outgoing: 0, incoming: 0} : options.heartbeat) || {outgoing: 10000, incoming: 10000}
 
     const initConnection = (headers: ConnectionHeaders): Observable<IConnectedObservable> => {
 
-        let disconnectFn;
         let currentHeaders: ConnectionHeaders = {...headers}
         // Check if we already have heart-beat in headers before adding them
         if (!headers['heart-beat']) {
-            currentHeaders['heart-beat'] = parseHeartbeatSettings(heartbeat);
+            currentHeaders['heart-beat'] = parseHeartbeatSettings(heartbeatClientSettings);
         }
 
         return wsHandler.initConnection(currentHeaders).switchMap((wsConnection: IWebSocketObservable) => {
 
             let counter: number = 0;
-            let partialData: string = '';
-            let version: string = '';
             let currentProtocol: IProtocol = stompProtocol(); // we initialise the current protocol with no version as we need it for CONNECT
 
-            const _parseMessageReceived = (evt: IEvent): Frame[] => {
-                const unmarshalledData = parseData(evt.data,
-                                                   partialData,
-                                                   currentProtocol.hearbeatMsg && currentProtocol.hearbeatMsg());
-                if(!unmarshalledData) {
-                    return;
+            const parseMessage = messageParser();
+
+            // sending connect message to the server
+            wsConnection.messageSender.next(currentProtocol.connect(currentHeaders));
+
+            // listen to the messages received from the connection
+            // to send a bit every n ms and check that we get a message every n ms
+            const heartbeatObserver = (mappedFrame) => {
+                const {frame, protocol} = mappedFrame
+                // we start heartbeat only if the protocol support it
+                const hearbeatMsg = protocol.hearbeatMsg();
+                if (hearbeatMsg) {
+                    const [outgoing, incoming] = (frame.headers['heart-beat'] || '0,0').split(',').map((v: string) => parseInt(v, 10));
+
+                    const heartbeat = observableHeartbeat(heartbeatClientSettings,
+                        {outgoing, incoming},
+                        () => wsConnection.messageSender.next(hearbeatMsg))
+                    return wsConnection.messageReceived.pipe(heartbeat).filter(() => false)
+                } else {
+                    return Observable.empty()
                 }
-                partialData = unmarshalledData.partial;
-                return unmarshalledData.frames;
             }
 
-            const unSubscribe = (_headers: UnsubscribeHeaders) =>
-                wsConnection.messageSender.next(currentProtocol.unSubscribe(_headers))
-
-            return <Observable<IConnectedObservable>>Observable.create((connectionObserver: Observer<IConnectedObservable>) => {
-
-                const stompMessageReceived = new Subject()
-                const stompMessageReceipted = new Subject()
-                const errorReceived = new Subject()
-
-                const subscribeTo = (destination: string, _headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
-                    const id = _headers.id || 'sub-' + counter++;
-                    const currentHeader: SubscribeHeaders = {destination, ack: _headers.ack, id };
-                    wsConnection.messageSender.next(currentProtocol.subscribe(currentHeader));
-                    return <Observable<Frame>>stompMessageReceived.finally(() => unSubscribe({id})).filter(
-                      (frame: Frame) => frame.headers.subscription === id
-                    );
-                }
-
-                // subscribing to message received
-                const msgSubscription = wsConnection.messageReceived.subscribe((evt: IEvent) => {
-                    heartbeat.activityFromServer();
-                    const dataFrames = _parseMessageReceived(evt);
-                    dataFrames && dataFrames.forEach(
-                        (frame: Frame) => {
-                            switch (frame.command) {
-                                case 'CONNECTED':
-                                    version = frame.headers.version;
-                                    currentProtocol = stompProtocol(version);
-                                    logger.debug(`connected to server ${frame.headers.server}`);
-
-                                    // we start heartbeat only if the protocol support it
-                                    const hearbeatMsg = currentProtocol.hearbeatMsg();
-                                    if (hearbeatMsg) {
-                                        const [serverOutgoing, serverIncoming] = (frame.headers['heart-beat'] || '0,0').split(',').map((v: string) => parseInt(v, 10));
-                                        heartbeat.startHeartbeat(serverOutgoing,
-                                                                 serverIncoming,
-                                                                {
-                                                                    sendPing: () => wsConnection.messageSender.next(hearbeatMsg),
-                                                                    close: (error) => connectionObserver.error(error)
-                                                                });
-                                    }
-
-                                    connectionObserver.next({
-                                            subscribeTo: subscribeTo,
-                                            messageReceipted: <Observable<Frame>>stompMessageReceipted.asObservable(),
-                                            errorReceived: <Observable<Frame>>errorReceived.asObservable(),
-                                            messageSender: wsConnection.messageSender,
-                                            protocol: currentProtocol
-                                        }
-                                    );
-                                    break;
-                                case 'MESSAGE':
-                                    const subscription: string = currentProtocol.getSubscription(frame)
-                                    const messageID: string = currentProtocol.getMessageId(frame);
-                                    frame.ack = () => wsConnection.messageSender.next(currentProtocol.ack(messageID, subscription));
-                                    currentProtocol.nack && (frame.nack = () => wsConnection.messageSender.next(currentProtocol.nack(messageID, subscription)));
-                                    stompMessageReceived.next(frame)
-                                    break;
-                                case 'RECEIPT':
-                                    stompMessageReceipted.next(frame);
-                                    break;
-                                case 'ERROR':
-                                    errorReceived.next(frame);
-                                    break;
-                                default:
-                                    logger.debug(`Unhandled frame: ${frame}`);
-                            }
-                        });
+            return wsConnection.messageReceived.concatMap(parseMessage.parseMessageReceived(currentProtocol))
+                .filter((frame) => frame.command === 'CONNECTED')
+                .map((frame) => {return {frame: frame, protocol: stompProtocol(frame.headers.version)}})
+                .switchMap((mappedFrame) => {
+                    const {frame, protocol} = mappedFrame
+                    logger.debug(`connected to server ${frame.headers.server}`);
+                    // merging the heartbeat with the init connection
+                    return Observable.merge(stompMessageObs(wsConnection, protocol, parseMessage), heartbeatObserver(mappedFrame))
                 })
 
-                // sending connect
-                wsConnection.messageSender.next(currentProtocol.connect(currentHeaders));
-
-                disconnectFn = () => {
-                      heartbeat.stopHeartbeat();
-                      wsConnection.messageSender.next(currentProtocol.disconnect({receipt: `${counter++}`}));
-                }
-
-                return () => {
-                    msgSubscription && msgSubscription.unsubscribe();
-                    stompMessageReceived.complete();
-                    stompMessageReceipted.complete();
-                    errorReceived.complete();
-                }
-
-            })
-
-        }).finally(() => {
-            disconnectFn && disconnectFn();
         })
     }
 
