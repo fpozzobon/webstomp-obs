@@ -47,7 +47,7 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
     const wsHandler: WebSocketHandler = new WebSocketHandler(createWsConnection, options);
 
     let heartbeatClientSettings: HeartbeatOptions = ((typeof options.heartbeat === 'boolean') ?
-        {outgoing: 0, incoming: 0} : options.heartbeat) || {outgoing: 1000, incoming: 1000}
+        {outgoing: 0, incoming: 0} : options.heartbeat) || {outgoing: 10000, incoming: 10000}
 
     const initConnection = (headers: ConnectionHeaders): Observable<IConnectedObservable> => {
 
@@ -70,21 +70,19 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
             // listen to the messages received from the connection
             // to send a bit every n ms and check that we get a message every n ms
             const heartbeatObserver = (mappedFrame) => {
-                return wsConnection.messageReceived.let((obs) => {
-                    const {frame, protocol} = mappedFrame
-                    // we start heartbeat only if the protocol support it
-                    const hearbeatMsg = protocol.hearbeatMsg();
-                    if (hearbeatMsg) {
-                        const [outgoing, incoming] = (frame.headers['heart-beat'] || '0,0').split(',').map((v: string) => parseInt(v, 10));
+                const {frame, protocol} = mappedFrame
+                // we start heartbeat only if the protocol support it
+                const hearbeatMsg = protocol.hearbeatMsg();
+                if (hearbeatMsg) {
+                    const [outgoing, incoming] = (frame.headers['heart-beat'] || '0,0').split(',').map((v: string) => parseInt(v, 10));
 
-                        const heartbeat = observableHeartbeat(heartbeatClientSettings,
-                            {outgoing, incoming},
-                            () => wsConnection.messageSender.next(hearbeatMsg))
-                        return obs.pipe(heartbeat)
-                    } else {
-                        return obs
-                    }
-                }).filter(() => false)
+                    const heartbeat = observableHeartbeat(heartbeatClientSettings,
+                        {outgoing, incoming},
+                        () => wsConnection.messageSender.next(hearbeatMsg))
+                    return wsConnection.messageReceived.pipe(heartbeat).filter(() => false)
+                } else {
+                    return Observable.empty()
+                }
             }
 
             return wsConnection.messageReceived.concatMap(parseMessage.parseMessageReceived(currentProtocol))
