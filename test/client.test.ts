@@ -29,7 +29,7 @@ describe ('Stompobservable client', () => {
     let stompWebSocketHandlerSpy
 
     beforeEach( () => {
-        connectedClientSpy = Sinon.spy(connectedClient, 'ConnectedClient')
+        connectedClientSpy = Sinon.spy(connectedClient, 'default')
         stompWebSocketHandlerSpy = Sinon.stub(stompWebSocketHandler, 'default')
                                    .returns(stompWebSocketHandlerMock)
         expectedCreateWsConnection = Sinon.stub()
@@ -92,7 +92,7 @@ describe ('Stompobservable client', () => {
             testedClient.connect({})
                         .subscribe(
                             (client) => {
-                                expect(connectedClientSpy.calledWithNew()).to.be.true
+                                Sinon.assert.calledOnce(connectedClientSpy)
                                 Sinon.assert.calledWith(connectedClientSpy, connectedStub)
                                 expect(client).to.equal(connectedClientSpy.getCall(0).returnValue)
                                 done()

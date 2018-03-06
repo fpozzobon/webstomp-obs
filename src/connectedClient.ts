@@ -11,129 +11,127 @@ import Frame from './frame';
 import { ACK, AckHeaders, SendHeaders } from './headers';
 
 interface ISubscriptions {
-    [key: string]: Observer<Frame>;
+    [key: string]: Observer<Frame>
 }
 
 interface IObservables {
-    [key: string]: Observable<Frame>;
+    [key: string]: Observable<Frame>
 }
 
-// STOMP Connected Client Class
-//
-export class ConnectedClient {
+export interface ConnectedClient {
+    send: (destination: string, body: string, headers: SendHeaders) => void
+    begin: (transaction?: string) => void
+    commit: (transaction: string) => void
+    abort: (transaction: string) => void
+    ack: (messageID: string, subscription: string, headers?: AckHeaders) => void
+    nack: (messageID: string, subscription: string, headers?: AckHeaders) => void
+    receipt: () => Observable<Frame>
+    connectionError: () => Observable<Frame>
+    error: () => Observable<Frame>
+    subscribe: (destination: string, headers: {id?: string, ack?: ACK}) => Observable<Frame>
+    subscribeBroadcast: (destination: string, headers: {id?: string, ack?: ACK}) => Observable<Frame>
+}
 
-    private connection: IConnectedObservable
-    private broadcastSubscribers: IObservables
-    private broadcastReceipterObservable: Observable<Frame>
-    private broadcastReceipterObserver: Observer<Frame>
-    private broadcastErrorObservable: Observable<Frame>
-    private broadcastErrorObserver: Observer<Frame>
-    private broadcastConnectionErrorObservable: Observable<Frame>
-    private broadcastConnectionErrorObserver: Observer<Frame>
+const createConnectedClient = (connection: IConnectedObservable): ConnectedClient  => {
 
-    constructor(connection: IConnectedObservable) {
-        this.connection = connection;
-        // subscription callbacks indexed by subscriber's ID
-        this.broadcastSubscribers = {};
-    }
+    let broadcastObservables: IObservables = {}
+    let broadcastReceipterObservable: Observable<Frame>
+    let broadcastErrorObservable: Observable<Frame>
+    let broadcastConnectionErrorObservable: Observable<Frame>
 
-    public send = (destination: string, body: string = '', headers: SendHeaders = {destination}): void => {
+    const {messageSender, messageReceipted, subscribeTo, errorReceived, protocol} = connection
+
+    const send = (destination: string, body: string = '', headers: SendHeaders = {destination}): void => {
         const headerToSend = { ...headers, destination};
-        this.connection.messageSender.next(this.connection.protocol.send(headerToSend, body));
+        messageSender.next(protocol.send(headerToSend, body));
     }
 
-    public begin = (transaction?: string) => {
-        this.connection.messageSender.next(this.connection.protocol.begin(transaction));
+    const begin = (transaction?: string): void => {
+        messageSender.next(protocol.begin(transaction));
     }
 
-    public commit = (transaction: string) => {
-        this.connection.messageSender.next(this.connection.protocol.commit(transaction));
+    const commit = (transaction: string): void => {
+        messageSender.next(protocol.commit(transaction));
     }
 
-    public abort = (transaction: string) => {
-        this.connection.messageSender.next(this.connection.protocol.abort(transaction));
+    const abort = (transaction: string): void => {
+        messageSender.next(protocol.abort(transaction));
     }
 
-    public ack = (messageID: string, subscription: string, headers?: AckHeaders) => {
-        this.connection.messageSender.next(this.connection.protocol.ack(messageID, subscription, headers));
+    const ack = (messageID: string, subscription: string, headers?: AckHeaders): void => {
+        messageSender.next(protocol.ack(messageID, subscription, headers));
     }
 
     // [NACK Frame](http://stomp.github.com/stomp-specification-1.1.html#NACK)
-    public nack = (messageID: string, subscription: string, headers?: AckHeaders) => {
-        if (this.connection.protocol.nack) {
-            this.connection.messageSender.next(this.connection.protocol.nack(messageID, subscription, headers));
+    const nack = (messageID: string, subscription: string, headers?: AckHeaders): void => {
+        if (protocol.nack) {
+            messageSender.next(protocol.nack(messageID, subscription, headers));
         } else {
             throw 'Nack unsupported operation';
         }
     }
 
     // [RECEIPT Frame](http://stomp.github.com/stomp-specification-1.1.html#RECEIPT)
-    public receipt = (): Observable<Frame> => {
+    const receipt = (): Observable<Frame> => {
 
         // create one and only one broadcast receiver
-        if (!this.broadcastReceipterObservable) {
-            const connectedSubscribe: ConnectableObservable<Frame> = this.connection.messageReceipted
-                .finally(() => this.broadcastReceipterObserver ? this.broadcastReceipterObserver = null : null)
-                .multicast(() => new Subject())
-
-            connectedSubscribe.connect();
-            this.broadcastReceipterObservable = connectedSubscribe.refCount();
+        if (!broadcastReceipterObservable) {
+                broadcastReceipterObservable = __multiCastMessageObs(messageReceipted)
         }
-        return this.broadcastReceipterObservable;
+        return broadcastReceipterObservable;
 
     }
 
     // Return an Observable containing the event when a connection error occure
-    public connectionError = (): Observable<Frame> => {
+    const connectionError = (): Observable<Frame> => {
 
         // create one and only one broadcast receiver
-        if (!this.broadcastConnectionErrorObservable) {
-            const connectionErrorSubscribe: ConnectableObservable<Frame> = this.connection.errorReceived
-                .finally(() => this.broadcastConnectionErrorObserver ? this.broadcastConnectionErrorObserver = null : null)
-                .multicast(() => new Subject())
-
-            connectionErrorSubscribe.connect();
-            this.broadcastConnectionErrorObservable = connectionErrorSubscribe.refCount();
+        if (!broadcastConnectionErrorObservable) {
+            broadcastConnectionErrorObservable = __multiCastMessageObs(errorReceived)
         }
-        return this.broadcastConnectionErrorObservable;
+        return broadcastConnectionErrorObservable;
 
     }
 
     // Return an Observable containing the error when an error occure
-    public error = (): Observable<Frame> => {
+    const error = (): Observable<Frame> => {
 
         // create one and only one broadcast receiver
-        if (!this.broadcastErrorObservable) {
-            const connectedSubscribe: ConnectableObservable<Frame> = this.connection.errorReceived
-                .finally(() => this.broadcastErrorObserver ? this.broadcastErrorObserver = null : null)
-                .multicast(() => new Subject())
-
-            connectedSubscribe.connect();
-            this.broadcastErrorObservable = connectedSubscribe.refCount();
+        if (!broadcastErrorObservable) {
+            broadcastErrorObservable = __multiCastMessageObs(errorReceived)
         }
-        return this.broadcastErrorObservable;
+        return broadcastErrorObservable;
 
     }
 
     // subscribe to a destination
     // return an Observable which you can unsubscribe
-    public subscribe = (destination: string, headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
-        return this.connection.subscribeTo(destination, headers);
+    const subscribe = (destination: string, headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
+        return subscribeTo(destination, headers);
     }
 
     // subscribe to a destination only once for multiple subscribers
     // return an Observable which you can unsubscribe
-    public subscribeBroadcast = (destination: string, headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
+    const subscribeBroadcast = (destination: string, headers: {id?: string, ack?: ACK} = {}): Observable<Frame> => {
         // create one and only one dedicated observable per destination
-        if (!this.broadcastSubscribers[destination]) {
-            const connectedSubscribe: ConnectableObservable<Frame> = this.subscribe(destination, headers)
-                .finally(() => this.broadcastSubscribers[destination] ? delete this.broadcastSubscribers[destination] : null)
-                .multicast(() => new Subject())
-
-            connectedSubscribe.connect();
-            this.broadcastSubscribers[destination] = connectedSubscribe.refCount();
+        if (!broadcastObservables[destination]) {
+            const onFinal = () => broadcastObservables[destination] ? delete broadcastObservables[destination] : null
+            broadcastObservables[destination] = __multiCastMessageObs(subscribe(destination, headers), onFinal)
         }
-        return this.broadcastSubscribers[destination];
+        return broadcastObservables[destination]
     }
 
+    const __multiCastMessageObs = (messageObs: Observable<Frame>, onFinal?: () => void) => {
+        const connectedSubscribe: ConnectableObservable<Frame> = messageObs
+            .finally(onFinal)
+            .multicast(() => new Subject())
+
+        connectedSubscribe.connect();
+        return connectedSubscribe.refCount();
+    }
+
+    return {send, begin, commit, abort, ack, nack, receipt, connectionError, error, subscribe, subscribeBroadcast}
+
 }
+
+export default createConnectedClient
