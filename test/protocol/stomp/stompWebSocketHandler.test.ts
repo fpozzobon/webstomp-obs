@@ -176,8 +176,7 @@ describe ('stompWebSocketHandler', () => {
                     // test
                     cnSubscription.unsubscribe()
                     // verification
-                    /* TODO : make work disconnect
-                    Sinon.assert.calledOnce(messageSenderSubjectSpy)
+                    /* TODO fix that test Sinon.assert.calledOnce(messageSenderSubjectSpy)
                     Sinon.assert.calledWithMatch(messageSenderSubjectSpy, 'DISCONNECT') */
                 })
 
@@ -242,7 +241,7 @@ describe ('stompWebSocketHandler', () => {
 
                 const TEXT_MSG = 'test msg'
                 const DESTINATION = '/topic/webstompobs-typescript-chat-example'
-                const SUBSCRIPTION = 'sub-1'
+                const SUBSCRIPTION = 'sub-0'
                 const MESSAGE_ID = '15-2'
                 const MESSAGE_MSG = 'MESSAGE' + BYTES.LF +
                                       'destination:' + DESTINATION + BYTES.LF +

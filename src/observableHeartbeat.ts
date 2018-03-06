@@ -1,6 +1,7 @@
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/operator/timeout';
 import 'rxjs/add/operator/delay';
+import 'rxjs/add/operator/merge';
 import 'rxjs/add/observable/interval';
 import 'rxjs/add/observable/empty';
 
@@ -28,7 +29,7 @@ const observableHeartbeat = (clientSettings: HeartbeatOptions,
         (!(pingTTL === 0)) ? Observable.interval(pingTTL).do(sendPing) : Observable.empty()
 
     return (source : Observable<any>) =>
-        Observable.merge(source.pipe(activityfromServer), source.pipe(pingToServer)).filter(() => false)
+        source.pipe(activityfromServer).merge(pingToServer()).filter(() => false)
 
 }
 
