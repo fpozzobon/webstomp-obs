@@ -12,6 +12,7 @@ import 'rxjs/add/operator/scan';
 import 'rxjs/add/operator/do';
 import 'rxjs/add/operator/catch';
 
+import createConnectedClient from './connectedClient'
 import { ConnectedClient } from './connectedClient';
 import { ConnectionHeaders } from './headers';
 import WebSocketHandler from './webSocketHandler';
@@ -62,13 +63,10 @@ class Client {
     }
 
     private __connect = (headers: ConnectionHeaders): Observable<ConnectedClient> => {
-        return this.__initConnectedClient(headers).switchMap((connection: IConnectedObservable) => {
+        return this.__initConnectedClient(headers).map((connection: IConnectedObservable) => {
             this.isConnected = true;
-            return Observable.of(new ConnectedClient(connection));
+            return createConnectedClient(connection);
         })
-        .catch(error => {
-            return Observable.throw(error);
-        });
     }
 
     private __initConnectedClient = (headers: ConnectionHeaders) => {
