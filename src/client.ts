@@ -63,14 +63,10 @@ class Client {
     }
 
     private __connect = (headers: ConnectionHeaders): Observable<ConnectedClient> => {
-        return this.__initConnectedClient(headers).switchMap((connection: IConnectedObservable) => {
+        return this.__initConnectedClient(headers).map((connection: IConnectedObservable) => {
             this.isConnected = true;
-            return Observable.of(createConnectedClient(connection));
+            return createConnectedClient(connection);
         })
-        .catch(error => {
-            // is it necessary ?
-            return Observable.throw(error);
-        });
     }
 
     private __initConnectedClient = (headers: ConnectionHeaders) => {
