@@ -21,12 +21,13 @@ describe ('stompWebSocketHandler', () => {
         initConnection: (headers: any) => initConnectionSubject
     }
 
-    const heartbeatSubject = new Subject()
+    let heartbeatSubject
     const heartbeatMock = (clientSettings: HeartbeatOptions,
                                  serverSettings: HeartbeatOptions,
                                  sendPing: () => void) => heartbeatSubject
 
     beforeEach (() => {
+        heartbeatSubject = new Subject()
         wsHandlerStub = Sinon.stub(WebSocketHandler, 'default').returns(wsHandlerMock)
         heartbeatStub = Sinon.stub(Heartbeat, 'default').returns(heartbeatMock)
     })
@@ -176,8 +177,8 @@ describe ('stompWebSocketHandler', () => {
                     // test
                     cnSubscription.unsubscribe()
                     // verification
-                    /* TODO fix that test Sinon.assert.calledOnce(messageSenderSubjectSpy)
-                    Sinon.assert.calledWithMatch(messageSenderSubjectSpy, 'DISCONNECT') */
+                    Sinon.assert.calledOnce(messageSenderSubjectSpy)
+                    Sinon.assert.calledWithMatch(messageSenderSubjectSpy, 'DISCONNECT')
                 })
 
             })
