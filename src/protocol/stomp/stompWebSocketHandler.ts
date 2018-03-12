@@ -122,7 +122,7 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
 
         // first initialise the connection with the webSocket
         return wsHandler.initConnection(currentHeaders)
-            .pipe(switchMapUntil((wsConnection: IWebSocketObservable) => {
+            .pipe(switchMapUntil((wsConnection: IWebSocketObservable, index: number, notifier: Subject<any>) => {
                 // sending connect message to the server
                 wsConnection.messageSender.next(currentProtocol.connect(currentHeaders))
                 return wsConnection.messageReceived.flatMap(messageParser.parseMessageReceived(currentProtocol))
@@ -132,14 +132,21 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
                         frame: frame,
                         protocol: stompProtocol(frame.headers.version)
                     }))
-                    .finally(() => wsConnection.messageSender.next(currentProtocol.disconnect({receipt: `${counter++}`})))
+                    .finally(() => {
+                        wsConnection.messageReceived.subscribe(() => {
+                            notifier.complete()
+                        })
+                        wsConnection.messageSender.next(currentProtocol.disconnect({receipt: `${counter++}`}))
+                    })
             }))
-            .pipe(switchMapUntil((mappedFrame) => {
+            .pipe(switchMapUntil((mappedFrame, index: number, notifier: Subject<any>) => {
                 const {wsConnection, frame, protocol} = mappedFrame
                 logger.debug(`connected to server ${frame.headers.server}`)
                 // merging the heartbeat with the init connection
                 return stompMessageObs(wsConnection, protocol, messageParser)
-                    .merge(createHeartbeatObservable(wsConnection, protocol, frame, heartbeatClientSettings))
+                    .merge(createHeartbeatObservable(wsConnection, protocol, frame, heartbeatClientSettings)).finally(() => {
+                        notifier.complete()
+                    })
             }))
     }
 

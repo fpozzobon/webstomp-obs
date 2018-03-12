@@ -25,10 +25,7 @@ var config = {
       { test: /\.tsx?$/, loader: "ts-loader" },
       { enforce: "pre", test: /\.js$/, loader: "source-map-loader" }
     ]
-  },
-  plugins: [
-    new CleanWebpackPlugin(['dist'])
-  ]
+  }
 };
 
 module.exports = config;

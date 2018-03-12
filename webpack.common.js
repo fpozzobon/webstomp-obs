@@ -4,7 +4,7 @@ const webpack = require('webpack'),
       CleanWebpackPlugin = require('clean-webpack-plugin');
 
 const libraryName = 'webstompobs',
-      dist = '/dist';
+      dist = '/example/dist';
 
 const common = {
   target: 'web',
