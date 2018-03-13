@@ -1,22 +1,18 @@
 import { Observable, ObservableInput } from 'rxjs/Observable'
-import { Observer } from 'rxjs/Observer'
 import { Subject } from 'rxjs/Subject'
+import { doFinally } from './doFinally'
 
 import 'rxjs/add/operator/switchMap'
-import 'rxjs/add/operator/takeUntil'
 
-export const switchMapUntil = <T, R>(project: (value: T, index: number, notifier: Subject<any>) => ObservableInput<R>) => {
+export const switchMapUntil = <T, R, S>(project: (value: T, index: number) => ObservableInput<R>, f: (value: R, notifier: Subject<any>) => Observable<S>) => {
     const notifier = new Subject()
     return (source: Observable<T>): Observable<R> =>
-        Observable.create((observer: Observer<T>) => {
-            const internalSub = source.subscribe(
-                (val) => observer.next(val),
-                (err) => observer.error(err))
-            return () => {
-                notifier.subscribe(() => internalSub.unsubscribe(),
-                                () => internalSub.unsubscribe(),
-                                () => internalSub.unsubscribe())
-                observer.complete()
-            }
-        }).switchMap((value, index) => project(value, index, notifier))
+        source.switchMap((value, index) => project(value, index))
+            .pipe(doFinally((value) => {
+                const notifier = new Subject()
+                f(value, notifier).subscribe(() => {
+                    notifier.complete()
+                })
+                return notifier
+            }))
 }

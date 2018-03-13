@@ -6,6 +6,7 @@ import 'rxjs/add/operator/filter'
 import 'rxjs/add/operator/map'
 import 'rxjs/add/operator/merge'
 import 'rxjs/add/operator/mergeMap'
+import 'rxjs/add/operator/switchMap'
 import { switchMapUntil } from '../../operator/switchMapUntil'
 
 import { IEvent, IProtocol, IConnectedObservable, IWebSocketObservable, IWebSocketHandler, WsOptions, IWebSocket } from '../../types'
@@ -122,32 +123,32 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
 
         // first initialise the connection with the webSocket
         return wsHandler.initConnection(currentHeaders)
-            .pipe(switchMapUntil((wsConnection: IWebSocketObservable, index: number, notifier: Subject<any>) => {
-                // sending connect message to the server
-                wsConnection.messageSender.next(currentProtocol.connect(currentHeaders))
-                return wsConnection.messageReceived.flatMap(messageParser.parseMessageReceived(currentProtocol))
-                    .filter((frame) => frame.command === 'CONNECTED')
-                    .map((frame) => ({
-                        wsConnection: wsConnection,
-                        frame: frame,
-                        protocol: stompProtocol(frame.headers.version)
-                    }))
-                    .finally(() => {
-                        wsConnection.messageReceived.subscribe(() => {
-                            notifier.complete()
-                        })
-                        wsConnection.messageSender.next(currentProtocol.disconnect({receipt: `${counter++}`}))
-                    })
-            }))
-            .pipe(switchMapUntil((mappedFrame, index: number, notifier: Subject<any>) => {
+            .pipe(
+                switchMapUntil((wsConnection: IWebSocketObservable) => {
+                    // sending connect message to the server
+                    wsConnection.messageSender.next(currentProtocol.connect(currentHeaders))
+                    return wsConnection.messageReceived.flatMap(messageParser.parseMessageReceived(currentProtocol))
+                        .filter((frame) => frame.command === 'CONNECTED')
+                        .map((frame) => ({
+                            wsConnection: wsConnection,
+                            frame: frame,
+                            protocol: stompProtocol(frame.headers.version)
+                        }))
+                    },
+                    (mappedFrame, notifier) => {
+                        const {wsConnection, protocol} = mappedFrame
+                        wsConnection.messageSender.next(protocol.disconnect({receipt: `${counter++}`}))
+                        return wsConnection.messageReceived
+                    }
+                )
+            )
+            .switchMap((mappedFrame) => {
                 const {wsConnection, frame, protocol} = mappedFrame
                 logger.debug(`connected to server ${frame.headers.server}`)
                 // merging the heartbeat with the init connection
                 return stompMessageObs(wsConnection, protocol, messageParser)
-                    .merge(createHeartbeatObservable(wsConnection, protocol, frame, heartbeatClientSettings)).finally(() => {
-                        notifier.complete()
-                    })
-            }))
+                    .merge(createHeartbeatObservable(wsConnection, protocol, frame, heartbeatClientSettings))
+            })
     }
 
     return { initConnection }
