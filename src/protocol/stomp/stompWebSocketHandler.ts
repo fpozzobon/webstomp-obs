@@ -8,6 +8,7 @@ import 'rxjs/add/operator/merge'
 import 'rxjs/add/operator/mergeMap'
 import 'rxjs/add/operator/switchMap'
 import { switchMapUntil } from '../../operator/switchMapUntil'
+import { doUnsubscribe } from '../../operator/doFinally'
 
 import { IEvent, IProtocol, IConnectedObservable, IWebSocketObservable, IWebSocketHandler, WsOptions, IWebSocket } from '../../types'
 import Frame from '../../frame'
@@ -67,7 +68,12 @@ const stompMessageObs = (wsConnection: IWebSocketObservable, protocol: IProtocol
                     frame.ack = () => wsConnection.messageSender.next(protocol.ack(messageID, subscription))
                     protocol.nack && (frame.nack = () => wsConnection.messageSender.next(protocol.nack(messageID, subscription)))
                     return frame
-                }).finally(() => wsConnection.messageSender.next(protocol.unSubscribe({id})))
+                })
+                .pipe(
+                    doUnsubscribe((frame) => {
+                        wsConnection.messageSender.next(protocol.unSubscribe({id}))
+                    })
+                )
     }
 
     return Observable.create((stompWebSocketObserver: Observer<IConnectedObservable>) => {
@@ -121,21 +127,24 @@ const stompWebSocketHandler = (createWsConnection: () => IWebSocket, options: Ws
         let currentProtocol: IProtocol = stompProtocol()
         let counter: number = 0
 
+
+        const observeConnected = (wsConnection: IWebSocketObservable) => {
+            // sending connect message to the server
+            wsConnection.messageSender.next(currentProtocol.connect(currentHeaders))
+            return wsConnection.messageReceived.flatMap(messageParser.parseMessageReceived(currentProtocol))
+                .filter((frame) => frame.command === 'CONNECTED')
+                .map((frame) => ({
+                    wsConnection: wsConnection,
+                    frame: frame,
+                    protocol: stompProtocol(frame.headers.version)
+                }))
+        }
+
         // first initialise the connection with the webSocket
         return wsHandler.initConnection(currentHeaders)
             .pipe(
-                switchMapUntil((wsConnection: IWebSocketObservable) => {
-                    // sending connect message to the server
-                    wsConnection.messageSender.next(currentProtocol.connect(currentHeaders))
-                    return wsConnection.messageReceived.flatMap(messageParser.parseMessageReceived(currentProtocol))
-                        .filter((frame) => frame.command === 'CONNECTED')
-                        .map((frame) => ({
-                            wsConnection: wsConnection,
-                            frame: frame,
-                            protocol: stompProtocol(frame.headers.version)
-                        }))
-                    },
-                    (mappedFrame, notifier) => {
+                switchMapUntil(observeConnected,
+                    (mappedFrame) => {
                         const {wsConnection, protocol} = mappedFrame
                         wsConnection.messageSender.next(protocol.disconnect({receipt: `${counter++}`}))
                         return wsConnection.messageReceived
